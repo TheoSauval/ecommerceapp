@@ -1,11 +1,12 @@
-const User = require('../models/users');
-const Product = require('../models/products');
+const { User, Produit } = require('../models');
 
 // GET /api/users/me/favorites
 exports.getFavorites = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('favorites');
-        res.json(user.favorites);
+        const user = await User.findByPk(req.user.id, {
+            include: [{ model: Produit, as: 'Favorites' }]
+        });
+        res.json(user ? user.Favorites : []);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -15,23 +16,16 @@ exports.getFavorites = async (req, res) => {
 exports.addFavorite = async (req, res) => {
     try {
         const { productId } = req.body;
-        
-        // Vérifier si le produit existe
-        const product = await Product.findById(productId);
+        const product = await Produit.findByPk(productId);
         if (!product) {
             return res.status(404).json({ message: 'Produit non trouvé' });
         }
-
-        const user = await User.findById(req.user.id);
-        
-        // Vérifier si le produit est déjà dans les favoris
-        if (user.favorites.includes(productId)) {
+        const user = await User.findByPk(req.user.id);
+        const favorites = await user.getFavorites({ where: { id: productId } });
+        if (favorites.length > 0) {
             return res.status(400).json({ message: 'Produit déjà dans les favoris' });
         }
-
-        user.favorites.push(productId);
-        await user.save();
-
+        await user.addFavorite(product);
         res.status(201).json({ message: 'Produit ajouté aux favoris' });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -41,16 +35,16 @@ exports.addFavorite = async (req, res) => {
 // DELETE /api/users/me/favorites/:id
 exports.removeFavorite = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        
-        // Vérifier si le produit est dans les favoris
-        if (!user.favorites.includes(req.params.id)) {
+        const user = await User.findByPk(req.user.id);
+        const product = await Produit.findByPk(req.params.id);
+        if (!product) {
+            return res.status(404).json({ message: 'Produit non trouvé' });
+        }
+        const favorites = await user.getFavorites({ where: { id: req.params.id } });
+        if (favorites.length === 0) {
             return res.status(404).json({ message: 'Produit non trouvé dans les favoris' });
         }
-
-        user.favorites = user.favorites.filter(id => id.toString() !== req.params.id);
-        await user.save();
-
+        await user.removeFavorite(product);
         res.json({ message: 'Produit retiré des favoris' });
     } catch (error) {
         res.status(500).json({ message: error.message });

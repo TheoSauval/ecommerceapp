@@ -34,12 +34,12 @@ beforeAll(async () => {
     .post('/api/admin/products')
     .set('Authorization', `Bearer ${token}`)
     .send({
-      name: 'Test Product',
+      nom: 'Test Product',
       description: 'Test Description',
-      price: 99.99,
-      category: 'Test Category',
-      brand: 'Test Brand',
-      stock: 100,
+      prix: 99.99,
+      categorie: 'Test Category',
+      marque: 'Test Brand',
+      quantite: 100,
       images: ['test-image-1.jpg']
     });
 
@@ -107,9 +107,9 @@ describe('## ADMIN ORDERS', () => {
       .put(`/api/admin/orders/${orderId}/status`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        status: 'En cours de préparation'
+        status: 'Expédiée'
       });
     expect(res.statusCode).toBe(200);
-    expect(res.body.status).toBe('En cours de préparation');
+    expect(res.body.status).toBe('Expédiée');
   });
 }); 

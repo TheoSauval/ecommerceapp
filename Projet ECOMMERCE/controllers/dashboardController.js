@@ -4,11 +4,6 @@ const { Op } = require('sequelize');
 // GET /api/admin/dashboard/sales
 exports.getSales = async (req, res) => {
     try {
-        const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id }
-        });
-        const productIds = products.map(p => p.id);
-
         const orders = await Commande.findAll({
             where: {
                 status: {
@@ -16,18 +11,12 @@ exports.getSales = async (req, res) => {
                 }
             },
             include: [{
-                model: Produit,
-                where: {
-                    id: {
-                        [Op.in]: productIds
-                    }
-                }
+                model: Produit
             }]
         });
 
         const totalRevenue = orders.reduce((sum, order) => {
-            const orderProducts = order.Produits.filter(p => productIds.includes(p.id));
-            return sum + orderProducts.reduce((orderSum, p) => orderSum + p.prix * p.CommandeProduit.quantite, 0);
+            return sum + order.Produits.reduce((orderSum, p) => orderSum + p.prix * p.CommandeProduit.quantite, 0);
         }, 0);
 
         const salesByDay = {};
@@ -38,8 +27,7 @@ exports.getSales = async (req, res) => {
             const day = date.toISOString().split('T')[0];
             const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-            const orderProducts = order.Produits.filter(p => productIds.includes(p.id));
-            const orderTotal = orderProducts.reduce((sum, p) => sum + p.prix * p.CommandeProduit.quantite, 0);
+            const orderTotal = order.Produits.reduce((sum, p) => sum + p.prix * p.CommandeProduit.quantite, 0);
 
             salesByDay[day] = (salesByDay[day] || 0) + orderTotal;
             salesByMonth[month] = (salesByMonth[month] || 0) + orderTotal;
@@ -58,11 +46,6 @@ exports.getSales = async (req, res) => {
 // GET /api/admin/dashboard/top-products
 exports.getTopProducts = async (req, res) => {
     try {
-        const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id }
-        });
-        const productIds = products.map(p => p.id);
-
         const orders = await Commande.findAll({
             where: {
                 status: {
@@ -70,29 +53,25 @@ exports.getTopProducts = async (req, res) => {
                 }
             },
             include: [{
-                model: Produit,
-                where: {
-                    id: {
-                        [Op.in]: productIds
-                    }
-                }
+                model: Produit
             }]
         });
 
         const salesPerProduct = {};
 
         orders.forEach(order => {
-            const orderProducts = order.Produits.filter(p => productIds.includes(p.id));
-            orderProducts.forEach(p => {
+            order.Produits.forEach(p => {
                 if (!salesPerProduct[p.id]) {
                     salesPerProduct[p.id] = {
-                        product: p,
-                        revenue: 0,
-                        quantity: 0
+                        id: p.id,
+                        name: p.nom,
+                        price: p.prix,
+                        totalSales: 0,
+                        revenue: 0
                     };
                 }
                 salesPerProduct[p.id].revenue += p.prix * p.CommandeProduit.quantite;
-                salesPerProduct[p.id].quantity += p.CommandeProduit.quantite;
+                salesPerProduct[p.id].totalSales += p.CommandeProduit.quantite;
             });
         });
 

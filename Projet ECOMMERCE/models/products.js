@@ -26,6 +26,22 @@ const Produit = sequelize.define('product', {
     vendeur_id: {
         type: DataTypes.INTEGER,
         references: { model: 'vendors', key: 'id' }
+    },
+    description: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    categorie: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    marque: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    images: {
+        type: DataTypes.JSON,
+        allowNull: true
     }
 }, {
     timestamps: true

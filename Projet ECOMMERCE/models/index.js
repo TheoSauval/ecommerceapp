@@ -9,6 +9,7 @@ const Notification = require('../models/notifications');
 const Colors = require('../models/colors');
 const Heights = require('../models/heights');
 const CartItem = require('../models/cartItem');
+const Favorite = require('../models/favorites');
 
 // Définition des relations
 Vendeur.hasMany(Produit, { foreignKey: 'vendeur_id' });
@@ -39,6 +40,9 @@ CartItem.belongsTo(User, { foreignKey: 'UserId' });
 Produit.hasMany(CartItem, { foreignKey: 'ProductId' });
 CartItem.belongsTo(Produit, { foreignKey: 'ProductId' });
 
+User.belongsToMany(Produit, { as: 'Favorites', through: Favorite, foreignKey: 'user_id' });
+Produit.belongsToMany(User, { as: 'FavoredBy', through: Favorite, foreignKey: 'product_id' });
+
 module.exports = {
     sequelize,
     User,
@@ -49,5 +53,6 @@ module.exports = {
     Notification,
     Colors,
     Heights,
-    CartItem
+    CartItem,
+    Favorite
 };

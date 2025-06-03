@@ -46,7 +46,7 @@ describe('## NOTIFICATIONS', () => {
       .post('/api/notifications/register')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        deviceToken: 'test-device-token-123'
+        token: 'test-device-token-123'
       });
     expect(res.statusCode).toBe(201);
     expect(res.body.message).toBe('Token enregistré avec succès');

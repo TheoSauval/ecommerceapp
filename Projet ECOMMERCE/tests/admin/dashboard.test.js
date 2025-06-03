@@ -3,6 +3,7 @@ const app = require('../../app');
 const sequelize = require('../../config/database');
 
 let token;
+let productId1, productId2;
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
@@ -48,7 +49,7 @@ beforeAll(async () => {
     });
 
   // Créer des produits pour les tests
-  await request(app)
+  const prod1Res = await request(app)
     .post('/api/admin/products')
     .set('Authorization', `Bearer ${vendorRes.body.token}`)
     .send({
@@ -60,8 +61,9 @@ beforeAll(async () => {
       stock: 100,
       images: ['test-image-1.jpg']
     });
+  productId1 = prod1Res.body.id || prod1Res.body.product?.id;
 
-  await request(app)
+  const prod2Res = await request(app)
     .post('/api/admin/products')
     .set('Authorization', `Bearer ${vendorRes.body.token}`)
     .send({
@@ -73,6 +75,7 @@ beforeAll(async () => {
       stock: 50,
       images: ['test-image-2.jpg']
     });
+  productId2 = prod2Res.body.id || prod2Res.body.product?.id;
 
   // Créer un utilisateur pour les commandes
   await request(app)
@@ -105,7 +108,7 @@ beforeAll(async () => {
       },
       paymentMethod: 'card',
       items: [{
-        productId: 1,
+        productId: productId1,
         quantity: 2
       }]
     });
@@ -122,7 +125,7 @@ beforeAll(async () => {
       },
       paymentMethod: 'card',
       items: [{
-        productId: 2,
+        productId: productId2,
         quantity: 1
       }]
     });

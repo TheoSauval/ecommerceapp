@@ -5,6 +5,7 @@ const sequelize = require('../config/database');
 
 let token;
 let orderId;
+let productId;
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
@@ -29,6 +30,21 @@ beforeAll(async () => {
     });
   token = res.body.token;
 
+  // Créer un produit pour la commande
+  const productRes = await request(app)
+    .post('/api/admin/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      name: 'Test Product',
+      description: 'Test Description',
+      price: 50.0,
+      category: 'Test Category',
+      brand: 'Test Brand',
+      stock: 10,
+      images: ['test-image.jpg']
+    });
+  productId = productRes.body.id || productRes.body.product?.id;
+
   // Créer une commande pour les tests
   const orderRes = await request(app)
     .post('/api/orders')
@@ -40,7 +56,11 @@ beforeAll(async () => {
         postalCode: '12345',
         country: 'Test Country'
       },
-      paymentMethod: 'card'
+      paymentMethod: 'card',
+      items: [{
+        productId: productId,
+        quantity: 1
+      }]
     });
   orderId = orderRes.body.id;
 });

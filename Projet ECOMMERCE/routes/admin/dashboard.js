@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const dashboardController = require('../../controllers/dashboardController');
 const auth = require('../../middleware/auth');
-const isVendor = require('../../middleware/isVendor');
+const isAdmin = require('../../middleware/isAdmin');
 
-// Toutes les routes nécessitent une authentification et le rôle vendeur
+// Toutes les routes nécessitent une authentification et le rôle admin
 router.use(auth);
-router.use(isVendor);
+router.use(isAdmin);
 
 // GET /api/admin/dashboard/sales
 router.get('/sales', dashboardController.getSales);
