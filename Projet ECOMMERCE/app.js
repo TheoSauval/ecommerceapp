@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { sequelize } = require('./models');
+const cors = require('cors');
 
 // 3) Synchro avec la BDD
 sequelize.sync({ force: process.env.NODE_ENV === 'test' })
@@ -13,10 +14,16 @@ sequelize.sync({ force: process.env.NODE_ENV === 'test' })
     });
 
 const app = express();
-app.use(express.json());
+
+// Configuration CORS
+app.use(cors({
+    origin: 'http://localhost:3001',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // 1) Parse le JSON
-app.use(bodyParser.json());
+app.use(express.json());
 
 // 2) Routes
 const authRoutes = require('./routes/auth');
@@ -56,6 +63,12 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 // 3) 404 pour les routes non gérées
 app.use((req, res) => {
     res.status(404).json({ message: 'Route non trouvée' });
+});
+
+// Démarrage du serveur
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Serveur démarré sur le port ${PORT}`);
 });
 
 module.exports = app;
