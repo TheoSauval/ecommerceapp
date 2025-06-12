@@ -26,9 +26,9 @@ struct AccountView: View {
                             .foregroundColor(.gray)
                             .padding(.horizontal)
 
-                        NavigationLink(destination: LoginView(onLoginSuccess: {
-                            isLoggedIn = true
-                        })) {
+                        NavigationLink(
+                            destination: LoginView(isLoggedIn: $isLoggedIn)
+                        ) {
                             Text("Se connecter")
                                 .frame(maxWidth: .infinity)
                                 .padding()
@@ -37,9 +37,9 @@ struct AccountView: View {
                                 .cornerRadius(12)
                         }
 
-                        NavigationLink(destination: RegisterView(onRegisterSuccess: {
-                            isLoggedIn = true
-                        })) {
+                        NavigationLink(
+                            destination: RegisterView(isLoggedIn: $isLoggedIn)
+                        ) {
                             Text("Créer un compte")
                                 .frame(maxWidth: .infinity)
                                 .padding()
