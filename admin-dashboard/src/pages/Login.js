@@ -14,7 +14,7 @@ import axios from 'axios';
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
+    mail: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -68,12 +68,12 @@ function Login() {
               margin="normal"
               required
               fullWidth
-              id="email"
+              id="mail"
               label="Email Address"
-              name="email"
+              name="mail"
               autoComplete="email"
               autoFocus
-              value={formData.email}
+              value={formData.mail}
               onChange={handleChange}
             />
             <TextField
