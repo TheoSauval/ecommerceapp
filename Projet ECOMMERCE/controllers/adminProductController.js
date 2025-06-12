@@ -1,10 +1,14 @@
-const { Produit, Colors, Heights } = require('../models');
+const { Produit, Colors, Heights, Vendeur } = require('../models');
 
 // GET /api/admin/products
 exports.getAllProducts = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id },
+            where: { vendeur_id: vendor.id },
             include: [
                 { model: Colors },
                 { model: Heights }
@@ -20,10 +24,14 @@ exports.getAllProducts = async (req, res) => {
 // GET /api/admin/products/:id
 exports.getProductById = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const product = await Produit.findOne({
             where: {
                 id: req.params.id,
-                vendeur_id: req.user.id
+                vendeur_id: vendor.id
             },
             include: [
                 { model: Colors },
@@ -42,6 +50,10 @@ exports.getProductById = async (req, res) => {
 // POST /api/admin/products
 exports.createProduct = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const { nom, prix, quantite, description, categorie, marque, images } = req.body;
         const product = await Produit.create({
             nom,
@@ -51,21 +63,26 @@ exports.createProduct = async (req, res) => {
             categorie,
             marque,
             images,
-            vendeur_id: req.user.id
+            vendeur_id: vendor.id
         });
         res.status(201).json(product);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Erreur lors de la création du produit:', error, error?.errors);
+        res.status(500).json({ message: error.message, details: error?.errors });
     }
 };
 
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const product = await Produit.findOne({
             where: {
                 id: req.params.id,
-                vendeur_id: req.user.id
+                vendeur_id: vendor.id
             }
         });
         if (!product) {
@@ -90,10 +107,14 @@ exports.updateProduct = async (req, res) => {
 // DELETE /api/admin/products/:id
 exports.deleteProduct = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const product = await Produit.findOne({
             where: {
                 id: req.params.id,
-                vendeur_id: req.user.id
+                vendeur_id: vendor.id
             }
         });
         if (!product) {
@@ -109,10 +130,14 @@ exports.deleteProduct = async (req, res) => {
 // POST /api/admin/products/:id/heights
 exports.addHeight = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const product = await Produit.findOne({
             where: {
                 id: req.params.id,
-                vendeur_id: req.user.id
+                vendeur_id: vendor.id
             }
         });
         if (!product) {
@@ -150,10 +175,14 @@ exports.removeHeight = async (req, res) => {
 // POST /api/admin/products/:id/colors
 exports.addColor = async (req, res) => {
     try {
+        const vendor = await Vendeur.findOne({ where: { user_id: req.user.id } });
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
         const product = await Produit.findOne({
             where: {
                 id: req.params.id,
-                vendeur_id: req.user.id
+                vendeur_id: vendor.id
             }
         });
         if (!product) {

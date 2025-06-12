@@ -3,6 +3,7 @@ require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
 const User   = require('../models/users');
+const Vendeur = require('../models/vendors');
 
 /**
  * POST /api/auth/register
@@ -25,6 +26,15 @@ exports.register = async (req, res) => {
       password: hash,
       role: role || 'user' // Use provided role or default to 'user'
     });
+
+    // If user is a vendor, create a corresponding vendor record
+    if (role === 'vendor') {
+      await Vendeur.create({
+        nom: `${prenom} ${nom}`,
+        user_id: user.id
+      });
+    }
+
     return res.status(201).json({
       id:     user.id,
       mail:   user.mail,

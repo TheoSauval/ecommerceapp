@@ -25,7 +25,8 @@ const Produit = sequelize.define('product', {
     },
     vendeur_id: {
         type: DataTypes.INTEGER,
-        references: { model: 'vendors', key: 'id' }
+        references: { model: 'vendors', key: 'id' },
+        allowNull: false
     },
     description: {
         type: DataTypes.STRING,

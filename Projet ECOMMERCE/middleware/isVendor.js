@@ -2,6 +2,7 @@ const { User } = require('../models');
 
 module.exports = async (req, res, next) => {
     try {
+        console.log('User reçu dans isVendor:', req.user ? req.user.toJSON() : null);
         const user = await User.findByPk(req.user.id);
         
         if (!user || user.role !== 'vendor') {
