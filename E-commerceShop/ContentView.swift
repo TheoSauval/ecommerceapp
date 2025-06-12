@@ -3,7 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var favoriteProducts: [Product] = []
-    @StateObject var cartManager = CartManager() // ✅
+    @StateObject var cartManager = CartManager()
+    @State private var isLoggedIn = false  // 🆕 Gestion de la session
 
     var body: some View {
         NavigationStack {
@@ -18,8 +19,19 @@ struct ContentView: View {
                     CartView()
                         .tag(2)
 
-                    AccountView()
-                        .tag(3)
+                    // 👇 Affiche LoginView ou ProfileView selon connexion
+                    Group {
+                        if isLoggedIn {
+                            ProfileView {
+                                isLoggedIn = false  // 👈 Déconnexion
+                            }
+                            .tag(3)
+                        } else {
+                            LoginView(isLoggedIn: $isLoggedIn)
+                                .tag(3)
+                        }
+                    }
+                    .tag(3)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
 
@@ -42,10 +54,6 @@ struct ContentView: View {
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .background(Color.white)
         }
-        .environmentObject(cartManager) // ✅ PLACE-LE ICI, PAS À L’INTÉRIEUR DU TABVIEW
+        .environmentObject(cartManager)
     }
-}
-
-#Preview {
-    ContentView()
 }

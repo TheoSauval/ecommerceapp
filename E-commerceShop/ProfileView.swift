@@ -27,24 +27,33 @@ struct ProfileView: View {
                     }
                     .padding(.top, 32)
 
-                    SectionView(title: "COMPTE", items: [
-                        .init(title: "Mes commandes", icon: "bag"),
-                        .init(title: "Mes coordonnées", icon: "person"),
-                        .init(title: "Carnet d'adresses", icon: "book"),
-                        .init(title: "Paramètres", icon: "gear")
-                    ]) { item in
+                    SectionView(
+                        title: "COMPTE",
+                        items: [
+                            .init(title: "Mes commandes", icon: "bag"),
+                            .init(title: "Mes coordonnées", icon: "person"),
+                            .init(title: "Carnet d'adresses", icon: "book"),
+                            .init(title: "Paramètres", icon: "gear"),
+                        ]
+                    ) { item in
                         selectedItem = item
                     }
 
-                    SectionView(title: "AIDE", items: [
-                        .init(title: "Assistance client", icon: "questionmark.circle")
-                    ]) { item in
+                    SectionView(
+                        title: "AIDE",
+                        items: [
+                            .init(title: "Assistance client", icon: "questionmark.circle")
+                        ]
+                    ) { item in
                         selectedItem = item
                     }
 
-                    SectionView(title: "AUTRES", items: [
-                        .init(title: "Social", icon: "person.2")
-                    ]) { item in
+                    SectionView(
+                        title: "AUTRES",
+                        items: [
+                            .init(title: "Social", icon: "person.2")
+                        ]
+                    ) { item in
                         selectedItem = item
                     }
 

@@ -1,74 +1,48 @@
-//
-//  Login.swift
-//  E-commerceShop
-//
-//  Created by Théo Sauval on 23/04/2025.
-//
-
 import SwiftUI
 
 struct LoginView: View {
-    @State private var email: String = ""
-    @State private var password: String = ""
-    @State private var isPasswordVisible: Bool = false
-    var onLoginSuccess: (() -> Void)? = nil
+    @Binding var isLoggedIn: Bool
+    @State private var mail = ""
+    @State private var password = ""
+    @State private var errorMessage = ""
+    @State private var showRegister = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer().frame(height: 40)
-
+        VStack(spacing: 16) {
             Text("Connexion")
-                .font(.title)
-                .fontWeight(.bold)
+                .font(.largeTitle)
 
-            TextField("Email", text: $email)
-                .autocapitalization(.none)
-                .textContentType(.emailAddress)
+            TextField("Adresse mail", text: $mail)
                 .keyboardType(.emailAddress)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
+                .autocapitalization(.none)
+                .textFieldStyle(.roundedBorder)
 
-            if isPasswordVisible {
-                TextField("Mot de passe", text: $password)
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(10)
-            } else {
-                SecureField("Mot de passe", text: $password)
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(10)
+            SecureField("Mot de passe", text: $password)
+                .textFieldStyle(.roundedBorder)
+
+            if !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .foregroundColor(.red)
             }
 
-            Button(action: {
-                isPasswordVisible.toggle()
-            }) {
-                Text(isPasswordVisible ? "Cacher le mot de passe" : "Afficher le mot de passe")
-                    .font(.caption)
-                    .foregroundColor(.blue)
+            Button("Se connecter") {
+                AuthService.shared.login(mail: mail, password: password) { result in
+                    switch result {
+                    case .success:
+                        isLoggedIn = true
+                    case .failure(let error):
+                        errorMessage = error.localizedDescription
+                    }
+                }
             }
 
-            Button(action: {
-                // Simulation connexion réussie
-                onLoginSuccess?()
-            }) {
-                Text("Se connecter")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.black)
-                    .cornerRadius(12)
+            Button("Créer un compte") {
+                showRegister = true
             }
-
-            Spacer()
+            .sheet(isPresented: $showRegister) {
+                RegisterView(isLoggedIn: $isLoggedIn)
+            }
         }
         .padding()
-        .navigationTitle("Connexion")
-        .navigationBarTitleDisplayMode(.inline)
     }
-}
-
-#Preview {
-    LoginView()
 }

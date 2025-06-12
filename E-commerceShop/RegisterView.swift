@@ -1,75 +1,59 @@
-//
-//  RegisterView.swift
-//  E-commerceShop
-//
-//  Created by Théo Sauval on 23/04/2025.
-//
-
 import SwiftUI
 
 struct RegisterView: View {
-    @State var email: String = ""
-    @State var password: String = ""
-    @State var prenom: String = ""
-    @State var nom: String = ""
-    @State var confirmPassword: String = ""
-    var onRegisterSuccess: (() -> Void)? = nil
-    
+    @Binding var isLoggedIn: Bool
+    @Environment(\.dismiss) var dismiss
+
+    @State private var nom = ""
+    @State private var prenom = ""
+    @State private var age = ""
+    @State private var mail = ""
+    @State private var password = ""
+    @State private var errorMessage = ""
+
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer().frame(height: 40)
-            Text("Créer un compte")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            TextField("Prenom", text: $prenom)
-                .autocapitalization(.none)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-            
-            TextField("Nom", text: $nom)
-                .autocapitalization(.none)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-            
-            TextField("Email", text: $email)
-                .autocapitalization(.none)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-            
-            SecureField("Mot de passe", text: $password)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-            
-            SecureField("Confirmez votre mot de passe", text: $confirmPassword)
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-            
-            Button(action: {
-                onRegisterSuccess?()
-            }) {
-                Text("Créer un compte")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
+        NavigationView {
+            VStack(spacing: 16) {
+                TextField("Nom", text: $nom)
+                TextField("Prénom", text: $prenom)
+                TextField("Âge", text: $age)
+                    .keyboardType(.numberPad)
+                TextField("Email", text: $mail)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
+                SecureField("Mot de passe", text: $password)
+
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                }
+
+                Button("S'inscrire") {
+                    guard let ageInt = Int(age) else {
+                        errorMessage = "Âge invalide"
+                        return
+                    }
+
+                    AuthService.shared.register(
+                        nom: nom,
+                        prenom: prenom,
+                        age: ageInt,
+                        mail: mail,
+                        password: password
+                    ) { result in
+                        switch result {
+                        case .success:
+                            isLoggedIn = true
+                            dismiss()
+                        case .failure(let error):
+                            errorMessage = error.localizedDescription
+                        }
+                    }
+                }
             }
-            Spacer()
+            .textFieldStyle(.roundedBorder)
+            .padding()
+            .navigationTitle("Inscription")
         }
-        .padding()
-        .navigationTitle("Inscription")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -60,6 +60,10 @@ app.use('/api/admin/orders', adminOrderRoutes);
 const adminDashboardRoutes = require('./routes/admin/dashboard');
 app.use('/api/admin/dashboard', adminDashboardRoutes);
 
+app.get('/test', (req, res) => {
+    res.json({ message: 'API OK' });
+});
+
 // 3) 404 pour les routes non gérées
 app.use((req, res) => {
     res.status(404).json({ message: 'Route non trouvée' });
