@@ -1,25 +1,26 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-const { sequelize } = require('./models');
 const cors = require('cors');
 
-// 3) Synchro avec la BDD
-sequelize.sync({ force: process.env.NODE_ENV === 'test' })
-    .then(() => {
-        console.log('Database synchronized');
-    })
-    .catch((err) => {
-        console.error('Error synchronizing database:', err);
-    });
+// Configuration Supabase
+const { supabase } = require('./config/supabase');
 
 const app = express();
 
+// Middleware de logging pour toutes les requêtes
+app.use((req, res, next) => {
+    console.log(`🌐 ${req.method} ${req.path}`);
+    console.log('📋 Headers:', req.headers);
+    next();
+});
+
 // Configuration CORS
 app.use(cors({
-    origin: 'http://localhost:4000',
+    origin: ['http://localhost:3000', 'http://localhost:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 
 // 1) Parse le JSON
@@ -60,19 +61,24 @@ app.use('/api/admin/orders', adminOrderRoutes);
 const adminDashboardRoutes = require('./routes/admin/dashboard');
 app.use('/api/admin/dashboard', adminDashboardRoutes);
 
+const adminUploadRoutes = require('./routes/admin/upload');
+app.use('/api/admin/upload', adminUploadRoutes);
+
 app.get('/test', (req, res) => {
-    res.json({ message: 'API OK' });
+    res.json({ message: 'API OK - Supabase Migration Complete' });
 });
 
 // 3) 404 pour les routes non gérées
 app.use((req, res) => {
+    console.log('❌ Route non trouvée:', req.method, req.path);
     res.status(404).json({ message: 'Route non trouvée' });
 });
 
 // Démarrage du serveur
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
+    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+    console.log(`📊 Base de données: Supabase`);
 });
 
 module.exports = app;

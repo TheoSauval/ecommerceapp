@@ -30,10 +30,10 @@ function Dashboard() {
       try {
         const token = localStorage.getItem('token');
         const [salesResponse, productsResponse] = await Promise.all([
-          axios.get('http://localhost:3000/api/admin/dashboard/sales', {
+          axios.get('http://localhost:4000/api/admin/dashboard/sales', {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get('http://localhost:3000/api/admin/dashboard/top-products', {
+          axios.get('http://localhost:4000/api/admin/dashboard/top-products', {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);

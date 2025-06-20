@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const adminOrderController = require('../../controllers/adminOrderController');
-const auth = require('../../middleware/auth');
-const isVendor = require('../../middleware/isVendor');
+const { authenticateToken, isVendor } = require('../../middleware/auth');
 
 // Toutes les routes nécessitent une authentification et le rôle vendeur
-router.use(auth);
-router.use(isVendor);
+router.use(authenticateToken, isVendor);
 
 // GET /api/admin/orders
 router.get('/', adminOrderController.getAllOrders);

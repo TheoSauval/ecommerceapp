@@ -1,27 +1,40 @@
 // routes/auth.js
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 const {
   register,
   login,
-  refreshToken,
+  logout,
+  refreshSession,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  getProfile,
+  updateProfile
 } = require('../controllers/authController');
+const { authenticateToken } = require('../middleware/auth');
 
 // création de compte
 router.post('/register', register);
 
-// connexion → renvoie { token, refreshToken }
-router.post('/login',    login);
+// connexion → renvoie { user, session }
+router.post('/login', login);
 
-// rafraîchir l’access token en envoyant { refreshToken }
-router.post('/refresh',  refreshToken);
+// déconnexion
+router.post('/logout', logout);
+
+// rafraîchir la session en envoyant { refresh_token }
+router.post('/refresh', refreshSession);
 
 // demande de lien de réinitialisation { mail }
-router.post('/reset',    requestPasswordReset);
+router.post('/reset', requestPasswordReset);
 
-// reset du mot de passe via token URL + { password }
-router.put('/reset/:token', resetPassword);
+// reset du mot de passe { newPassword }
+router.put('/reset', resetPassword);
+
+// récupérer le profil utilisateur (authentifié)
+router.get('/profile', authenticateToken, getProfile);
+
+// mettre à jour le profil utilisateur (authentifié)
+router.put('/profile', authenticateToken, updateProfile);
 
 module.exports = router;

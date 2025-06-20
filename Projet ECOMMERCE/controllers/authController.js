@@ -1,150 +1,230 @@
 // controllers/authController.js
 require('dotenv').config();
-const bcrypt = require('bcrypt');
-const jwt    = require('jsonwebtoken');
-const User   = require('../models/users');
-const Vendeur = require('../models/vendors');
+const authService = require('../services/authService');
 
 /**
  * POST /api/auth/register
  */
-exports.register = async (req, res) => {
+const register = async (req, res) => {
   try {
     const { nom, prenom, age, mail, password, role } = req.body;
-    // 1) doublon d'email ?
-    if (await User.findOne({ where: { mail } })) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    
+    // Validation des données
+    if (!nom || !prenom || !age || !mail || !password) {
+      return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
-    // 2) hash
-    const hash = await bcrypt.hash(password, 10);
-    // 3) création
-    const user = await User.create({ 
-      nom, 
-      prenom, 
-      age, 
-      mail, 
-      password: hash,
-      role: role || 'user' // Use provided role or default to 'user'
-    });
-
-    // If user is a vendor, create a corresponding vendor record
-    if (role === 'vendor') {
-      await Vendeur.create({
-        nom: `${prenom} ${nom}`,
-        user_id: user.id
-      });
+    
+    if (age < 0) {
+      return res.status(400).json({ message: 'L\'âge doit être positif' });
     }
-
-    return res.status(201).json({
-      id:     user.id,
-      mail:   user.mail,
-      nom:    user.nom,
-      prenom: user.prenom,
-      role:   user.role
+    
+    if (role && !['user', 'vendor', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Rôle invalide' });
+    }
+    
+    // Créer l'utilisateur
+    const user = await authService.register({
+      nom,
+      prenom,
+      age,
+      mail,
+      password,
+      role: role || 'user'
     });
-  } catch (err) {
-    console.error('Register error:', err);
-    return res.status(500).json({ error: err.message });
+    
+    res.status(201).json({
+      message: 'Utilisateur créé avec succès',
+      user: {
+        id: user.id,
+        nom: user.nom,
+        prenom: user.prenom,
+        mail: user.mail,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'inscription:', error);
+    res.status(400).json({ message: error.message });
   }
 };
 
 /**
  * POST /api/auth/login
  */
-exports.login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { mail, password } = req.body;
-    const user = await User.findOne({ where: { mail } });
-    if (!user) {
-      return res.status(401).json({ error: 'Identifiants invalides' });
+    
+    // Validation des données
+    if (!mail || !password) {
+      return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
-    // vérif mdp
-    if (!await bcrypt.compare(password, user.password)) {
-      return res.status(401).json({ error: 'Identifiants invalides' });
-    }
-    const payload = { id: user.id, mail: user.mail, role: user.role };
-    // 1) access token court
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: '15m'
+    
+    // Connexion
+    const result = await authService.login(mail, password);
+    
+    res.json({
+      message: 'Connexion réussie',
+      user: result.user,
+      session: {
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+        expires_at: result.session.expires_at
+      }
     });
-    // 2) refresh token longue durée
-    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: '7d'
-    });
-    return res.json({ token, refreshToken });
-  } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error('Erreur lors de la connexion:', error);
+    res.status(401).json({ message: error.message });
+  }
+};
+
+/**
+ * POST /api/auth/logout
+ */
+const logout = async (req, res) => {
+  try {
+    await authService.logout();
+    res.json({ message: 'Déconnexion réussie' });
+  } catch (error) {
+    console.error('Erreur lors de la déconnexion:', error);
+    res.status(500).json({ message: 'Erreur lors de la déconnexion' });
   }
 };
 
 /**
  * POST /api/auth/refresh
- * Body: { refreshToken }
+ * Body: { refresh_token }
  */
-exports.refreshToken = (req, res) => {
-  const { refreshToken } = req.body;
-  if (!refreshToken) {
-    return res.status(401).json({ message: 'Refresh token manquant' });
-  }
-  jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, payload) => {
-    if (err) {
-      return res.status(401).json({ message: 'Refresh token invalide' });
+const refreshSession = async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+    
+    if (!refresh_token) {
+      return res.status(400).json({ message: 'Refresh token requis' });
     }
-    // nouveau access token
-    const newToken = jwt.sign(
-      { id: payload.id, mail: payload.mail },
-      process.env.JWT_SECRET,
-      { expiresIn: '15m' }
-    );
-    return res.json({ token: newToken });
-  });
+    
+    const result = await authService.refreshSession(refresh_token);
+    
+    res.json({
+      message: 'Session rafraîchie',
+      session: {
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+        expires_at: result.session.expires_at
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors du rafraîchissement:', error);
+    res.status(401).json({ message: error.message });
+  }
 };
 
 /**
  * POST /api/auth/reset
  * Body: { mail }
  */
-exports.requestPasswordReset = async (req, res) => {
-  const { mail } = req.body;
-  const user = await User.findOne({ where: { mail } });
-  // on ne leak pas l'existance de l'email
-  if (user) {
-    const payload = { id: user.id, mail: user.mail };
-    const resetToken = jwt.sign(payload, process.env.RESET_PASSWORD_SECRET, {
-      expiresIn: '1h'
-    });
-    // → ici envoi mail par nodemailer avec lien incluant ce token
-    console.log(`Password reset token for ${mail}: ${resetToken}`);
-    // pour les tests, on renvoie aussi le token
-    if (process.env.NODE_ENV === 'test') {
-      return res.json({
-        message: 'Si cet email existe, un lien a été envoyé',
-        resetToken
-      });
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { mail } = req.body;
+    
+    if (!mail) {
+      return res.status(400).json({ message: 'Email requis' });
     }
+    
+    await authService.requestPasswordReset(mail);
+    res.json({ message: 'Si cet email existe, un lien a été envoyé' });
+  } catch (error) {
+    console.error('Erreur lors de la demande de reset:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'envoi du lien' });
   }
-  return res.json({ message: 'Si cet email existe, un lien a été envoyé' });
 };
 
 /**
  * PUT /api/auth/reset/:token
- * Body: { password }
+ * Body: { newPassword }
  */
-exports.resetPassword = (req, res) => {
-  const { token } = req.params;
-  const { password } = req.body;
-  jwt.verify(token, process.env.RESET_PASSWORD_SECRET, async (err, payload) => {
-    if (err) {
-      return res.status(400).json({ message: 'Token invalide ou expiré' });
+const resetPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    
+    if (!newPassword) {
+      return res.status(400).json({ message: 'Nouveau mot de passe requis' });
     }
-    const user = await User.findByPk(payload.id);
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur introuvable' });
+    
+    await authService.resetPassword(newPassword);
+    res.json({ message: 'Mot de passe mis à jour avec succès' });
+  } catch (error) {
+    console.error('Erreur lors du reset:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du mot de passe' });
+  }
+};
+
+/**
+ * GET /api/auth/profile
+ */
+const getProfile = async (req, res) => {
+  try {
+    const user = await authService.getCurrentUser();
+    res.json({
+      user: {
+        id: user.id,
+        nom: user.nom,
+        prenom: user.prenom,
+        age: user.age,
+        role: user.role,
+        email: user.auth_users?.email
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du profil:', error);
+    res.status(401).json({ message: error.message });
+  }
+};
+
+/**
+ * PUT /api/auth/profile
+ * Body: { nom, prenom, age }
+ */
+const updateProfile = async (req, res) => {
+  try {
+    const { nom, prenom, age } = req.body;
+    const userId = req.user.id;
+    
+    // Validation des données
+    if (age !== undefined && age < 0) {
+      return res.status(400).json({ message: 'L\'âge doit être positif' });
     }
-    const hash = await bcrypt.hash(password, 10);
-    user.password = hash;
-    await user.save();
-    return res.json({ message: 'Mot de passe mis à jour' });
-  });
+    
+    const updates = {};
+    if (nom) updates.nom = nom;
+    if (prenom) updates.prenom = prenom;
+    if (age !== undefined) updates.age = age;
+    
+    const updatedProfile = await authService.updateProfile(userId, updates);
+    
+    res.json({
+      message: 'Profil mis à jour avec succès',
+      user: {
+        id: updatedProfile.id,
+        nom: updatedProfile.nom,
+        prenom: updatedProfile.prenom,
+        age: updatedProfile.age,
+        role: updatedProfile.role
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du profil' });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  logout,
+  refreshSession,
+  requestPasswordReset,
+  resetPassword,
+  getProfile,
+  updateProfile
 };

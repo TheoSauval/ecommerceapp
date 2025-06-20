@@ -1,29 +1,19 @@
-const { Commande, Produit, User } = require('../models');
-const { Op } = require('sequelize');
+const orderService = require('../services/orderService');
+const productService = require('../services/productService');
+const userService = require('../services/userService');
 
 // GET /api/admin/orders
 exports.getAllOrders = async (req, res) => {
     try {
-        const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id }
-        });
+        const vendor = await userService.getVendorProfile(req.user.id);
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
+        
+        const products = await productService.getProductsByVendor(vendor.id);
         const productIds = products.map(p => p.id);
-
-        const orders = await Commande.findAll({
-            include: [{
-                model: Produit,
-                where: {
-                    id: {
-                        [Op.in]: productIds
-                    }
-                }
-            }, {
-                model: User,
-                attributes: ['id', 'mail', 'nom', 'prenom']
-            }],
-            order: [['createdAt', 'DESC']]
-        });
-
+        
+        const orders = await orderService.getOrdersByProducts(productIds);
         res.json(orders);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -33,30 +23,27 @@ exports.getAllOrders = async (req, res) => {
 // GET /api/admin/orders/:id
 exports.getOrderById = async (req, res) => {
     try {
-        const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id }
-        });
+        const vendor = await userService.getVendorProfile(req.user.id);
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
+        
+        const products = await productService.getProductsByVendor(vendor.id);
         const productIds = products.map(p => p.id);
-
-        const order = await Commande.findOne({
-            where: { id: req.params.id },
-            include: [{
-                model: Produit,
-                where: {
-                    id: {
-                        [Op.in]: productIds
-                    }
-                }
-            }, {
-                model: User,
-                attributes: ['id', 'mail', 'nom', 'prenom']
-            }]
-        });
-
+        
+        const order = await orderService.getOrderById(req.params.id);
         if (!order) {
             return res.status(404).json({ message: 'Commande non trouvée' });
         }
-
+        
+        // Vérifier que la commande contient des produits du vendeur
+        const orderProductIds = order.items?.map(item => item.produit_id) || [];
+        const hasVendorProducts = orderProductIds.some(id => productIds.includes(id));
+        
+        if (!hasVendorProducts) {
+            return res.status(404).json({ message: 'Commande non trouvée' });
+        }
+        
         res.json(order);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -73,24 +60,24 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: 'Statut invalide' });
         }
 
-        const products = await Produit.findAll({
-            where: { vendeur_id: req.user.id }
-        });
+        const vendor = await userService.getVendorProfile(req.user.id);
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendeur non trouvé' });
+        }
+        
+        const products = await productService.getProductsByVendor(vendor.id);
         const productIds = products.map(p => p.id);
-
-        const order = await Commande.findOne({
-            where: { id: req.params.id },
-            include: [{
-                model: Produit,
-                where: {
-                    id: {
-                        [Op.in]: productIds
-                    }
-                }
-            }]
-        });
-
+        
+        const order = await orderService.getOrderById(req.params.id);
         if (!order) {
+            return res.status(404).json({ message: 'Commande non trouvée' });
+        }
+        
+        // Vérifier que la commande contient des produits du vendeur
+        const orderProductIds = order.items?.map(item => item.produit_id) || [];
+        const hasVendorProducts = orderProductIds.some(id => productIds.includes(id));
+        
+        if (!hasVendorProducts) {
             return res.status(404).json({ message: 'Commande non trouvée' });
         }
 
@@ -103,8 +90,8 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: 'Impossible de modifier une commande livrée' });
         }
 
-        await order.update({ status });
-        res.json(order);
+        const updatedOrder = await orderService.updateOrderStatus(req.params.id, status);
+        res.json(updatedOrder);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

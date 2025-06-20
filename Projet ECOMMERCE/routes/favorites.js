@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const favoriteController = require('../controllers/favoriteController');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Toutes les routes nécessitent une authentification
-router.use(auth);
+router.use(authenticateToken);
 
 // GET /api/users/me/favorites
 router.get('/', favoriteController.getFavorites);

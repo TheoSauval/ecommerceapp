@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 const orderController = require('../controllers/orderController');
-const auth = require('../middleware/auth');
 
 // Toutes les routes nécessitent une authentification
-router.use(auth);
+router.use(authenticateToken);
 
 // GET /api/orders
 router.get('/', orderController.getOrders);

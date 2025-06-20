@@ -1,31 +1,31 @@
-const { Notification, User } = require('../models');
+const notificationService = require('../services/notificationService');
 
 // GET /api/notifications
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.findAll({
-            where: { user_id: req.user.id },
-            order: [['createdAt', 'DESC']]
-        });
+        const notifications = await notificationService.getNotifications(req.user.id);
         res.json(notifications);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// POST /api/notifications/register-device
-exports.registerDevice = async (req, res) => {
+// POST /api/notifications
+exports.createNotification = async (req, res) => {
     try {
-        const { token } = req.body;
-        const user = await User.findByPk(req.user.id);
-        if (!user) {
-            return res.status(404).json({ message: 'Utilisateur non trouvé' });
-        }
-        if (user.device_token === token) {
-            return res.status(400).json({ message: 'Token déjà enregistré' });
-        }
-        await user.update({ device_token: token });
-        res.status(201).json({ message: 'Token enregistré avec succès' });
+        const { status } = req.body;
+        const notification = await notificationService.createNotification(req.user.id, status);
+        res.status(201).json(notification);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/notifications/:id
+exports.updateNotification = async (req, res) => {
+    try {
+        const notification = await notificationService.updateNotification(req.params.id, req.body);
+        res.json(notification);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -34,17 +34,48 @@ exports.registerDevice = async (req, res) => {
 // DELETE /api/notifications/:id
 exports.deleteNotification = async (req, res) => {
     try {
-        const notification = await Notification.findOne({
-            where: {
-                id: req.params.id,
-                user_id: req.user.id
-            }
-        });
-        if (!notification) {
-            return res.status(404).json({ message: 'Notification non trouvée' });
-        }
-        await notification.destroy();
-        res.json({ message: 'Notification supprimée avec succès' });
+        await notificationService.deleteNotification(req.params.id, req.user.id);
+        res.json({ message: 'Notification supprimée' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/notifications/:id/read
+exports.markAsRead = async (req, res) => {
+    try {
+        const notification = await notificationService.markAsRead(req.params.id, req.user.id);
+        res.json(notification);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/notifications/read-all
+exports.markAllAsRead = async (req, res) => {
+    try {
+        await notificationService.markAllAsRead(req.user.id);
+        res.json({ message: 'Toutes les notifications marquées comme lues' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// GET /api/notifications/unread-count
+exports.getUnreadCount = async (req, res) => {
+    try {
+        const count = await notificationService.getUnreadCount(req.user.id);
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// DELETE /api/notifications/clear-all
+exports.clearAllNotifications = async (req, res) => {
+    try {
+        await notificationService.clearAllNotifications(req.user.id);
+        res.json({ message: 'Toutes les notifications supprimées' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

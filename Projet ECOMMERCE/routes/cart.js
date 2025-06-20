@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cartController');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Toutes les routes nécessitent une authentification
-router.use(auth);
+router.use(authenticateToken);
 
 // GET /api/cart
 router.get('/', cartController.getCart);

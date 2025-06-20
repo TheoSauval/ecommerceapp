@@ -9,7 +9,7 @@ import {
   Paper,
   Grid,
 } from '@mui/material';
-import axios from 'axios';
+import api from '../config/api';
 
 function Login() {
   const navigate = useNavigate();
@@ -29,11 +29,12 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', formData);
-      localStorage.setItem('token', response.data.token);
+      const response = await api.post('/auth/login', formData);
+      // Stocker le token d'accès Supabase
+      localStorage.setItem('token', response.data.session.access_token);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
+      setError(err.response?.data?.message || 'Une erreur est survenue');
     }
   };
 

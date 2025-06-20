@@ -1,24 +1,13 @@
-const { Produit } = require('../models');
-const { Op } = require('sequelize');
+const productService = require('../services/productService');
 
 // GET /api/products
 exports.getAllProducts = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const offset = (page - 1) * limit;
 
-        const { count, rows } = await Produit.findAndCountAll({
-            limit,
-            offset,
-            order: [['createdAt', 'DESC']]
-        });
-
-        res.json({
-            products: rows,
-            totalPages: Math.ceil(count / limit),
-            currentPage: page
-        });
+        const result = await productService.getAllProducts(page, limit);
+        res.json(result);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -28,11 +17,7 @@ exports.getAllProducts = async (req, res) => {
 exports.searchProducts = async (req, res) => {
     try {
         const { q } = req.query;
-        const products = await Produit.findAll({
-            where: {
-                nom: { [Op.like]: `%${q}%` }
-            }
-        });
+        const products = await productService.searchProducts(q);
         res.json(products);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -42,11 +27,38 @@ exports.searchProducts = async (req, res) => {
 // GET /api/products/:id
 exports.getProductById = async (req, res) => {
     try {
-        const product = await Produit.findByPk(req.params.id);
-        if (!product) {
-            return res.status(404).json({ message: 'Produit non trouvé' });
-        }
+        const product = await productService.getProductById(req.params.id);
         res.json(product);
+    } catch (error) {
+        res.status(404).json({ message: 'Produit non trouvé' });
+    }
+};
+
+// POST /api/products
+exports.createProduct = async (req, res) => {
+    try {
+        const product = await productService.createProduct(req.body);
+        res.status(201).json(product);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/products/:id
+exports.updateProduct = async (req, res) => {
+    try {
+        const product = await productService.updateProduct(req.params.id, req.body);
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// DELETE /api/products/:id
+exports.deleteProduct = async (req, res) => {
+    try {
+        await productService.deleteProduct(req.params.id);
+        res.json({ message: 'Produit supprimé' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

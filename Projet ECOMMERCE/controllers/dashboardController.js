@@ -1,33 +1,26 @@
-const { Produit, Commande } = require('../models');
-const { Op } = require('sequelize');
+const orderService = require('../services/orderService');
+const productService = require('../services/productService');
 
 // GET /api/admin/dashboard/sales
 exports.getSales = async (req, res) => {
     try {
-        const orders = await Commande.findAll({
-            where: {
-                status: {
-                    [Op.notIn]: ['Annulée', 'En attente']
-                }
-            },
-            include: [{
-                model: Produit
-            }]
-        });
-
+        const orders = await orderService.getCompletedOrders();
+        
         const totalRevenue = orders.reduce((sum, order) => {
-            return sum + order.Produits.reduce((orderSum, p) => orderSum + p.prix * p.CommandeProduit.quantite, 0);
+            return sum + (order.items?.reduce((orderSum, item) => 
+                orderSum + (item.prix * item.quantite), 0) || 0);
         }, 0);
 
         const salesByDay = {};
         const salesByMonth = {};
 
         orders.forEach(order => {
-            const date = new Date(order.createdAt);
+            const date = new Date(order.created_at);
             const day = date.toISOString().split('T')[0];
             const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-            const orderTotal = order.Produits.reduce((sum, p) => sum + p.prix * p.CommandeProduit.quantite, 0);
+            const orderTotal = order.items?.reduce((sum, item) => 
+                sum + (item.prix * item.quantite), 0) || 0;
 
             salesByDay[day] = (salesByDay[day] || 0) + orderTotal;
             salesByMonth[month] = (salesByMonth[month] || 0) + orderTotal;
@@ -46,32 +39,22 @@ exports.getSales = async (req, res) => {
 // GET /api/admin/dashboard/top-products
 exports.getTopProducts = async (req, res) => {
     try {
-        const orders = await Commande.findAll({
-            where: {
-                status: {
-                    [Op.notIn]: ['Annulée', 'En attente']
-                }
-            },
-            include: [{
-                model: Produit
-            }]
-        });
-
+        const orders = await orderService.getCompletedOrders();
         const salesPerProduct = {};
 
         orders.forEach(order => {
-            order.Produits.forEach(p => {
-                if (!salesPerProduct[p.id]) {
-                    salesPerProduct[p.id] = {
-                        id: p.id,
-                        name: p.nom,
-                        price: p.prix,
+            order.items?.forEach(item => {
+                if (!salesPerProduct[item.produit_id]) {
+                    salesPerProduct[item.produit_id] = {
+                        id: item.produit_id,
+                        name: item.nom,
+                        price: item.prix,
                         totalSales: 0,
                         revenue: 0
                     };
                 }
-                salesPerProduct[p.id].revenue += p.prix * p.CommandeProduit.quantite;
-                salesPerProduct[p.id].totalSales += p.CommandeProduit.quantite;
+                salesPerProduct[item.produit_id].revenue += item.prix * item.quantite;
+                salesPerProduct[item.produit_id].totalSales += item.quantite;
             });
         });
 

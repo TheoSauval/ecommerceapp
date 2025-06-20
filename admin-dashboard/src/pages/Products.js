@@ -18,52 +18,79 @@ import {
   Typography,
   Chip,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  CloudUpload as UploadIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../config/api';
 
 function Products() {
   const [products, setProducts] = useState([]);
+  const [colors, setColors] = useState([]);
+  const [heights, setHeights] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
   const [formData, setFormData] = useState({
     nom: '',
     description: '',
-    prix: '',
-    quantite: '',
-    images: '',
+    prix_base: '',
     marque: '',
     categorie: '',
-    colors: '',
-    heights: '',
+    images: [],
+    variants: []
   });
 
   useEffect(() => {
     fetchProducts();
+    fetchColors();
+    fetchHeights();
   }, []);
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3000/api/products', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      console.log('API response:', response.data);
-      if (Array.isArray(response.data)) {
-        setProducts(response.data);
-      } else if (Array.isArray(response.data.products)) {
-        setProducts(response.data.products);
-      } else if (Array.isArray(response.data.rows)) {
-        setProducts(response.data.rows);
-      } else {
-        setProducts([]);
-      }
+      setLoading(true);
+      const response = await api.get('/admin/products');
+      setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchColors = async () => {
+    try {
+      const response = await api.get('/admin/products/colors');
+      setColors(response.data);
+    } catch (error) {
+      console.error('Error fetching colors:', error);
+    }
+  };
+
+  const fetchHeights = async () => {
+    try {
+      const response = await api.get('/admin/products/heights');
+      setHeights(response.data);
+    } catch (error) {
+      console.error('Error fetching heights:', error);
     }
   };
 
@@ -73,34 +100,35 @@ function Products() {
       setFormData({
         nom: product.nom,
         description: product.description,
-        prix: product.prix,
-        quantite: product.quantite,
-        images: Array.isArray(product.images) ? product.images.join(',') : (product.images || ''),
+        prix_base: product.prix_base,
         marque: product.marque || '',
         categorie: product.categorie || '',
-        colors: product.colors ? product.colors.map(c => c.couleur).join(',') : '',
-        heights: product.heights ? product.heights.map(h => h.taille).join(',') : '',
+        images: product.images || [],
+        variants: product.variants || []
       });
+      setPreviewImages(product.images || []);
     } else {
       setEditingProduct(null);
       setFormData({
         nom: '',
         description: '',
-        prix: '',
-        quantite: '',
-        images: '',
+        prix_base: '',
         marque: '',
         categorie: '',
-        colors: '',
-        heights: '',
+        images: [],
+        variants: []
       });
+      setPreviewImages([]);
     }
+    setSelectedFiles([]);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
     setEditingProduct(null);
+    setSelectedFiles([]);
+    setPreviewImages([]);
   };
 
   const handleChange = (e) => {
@@ -110,79 +138,121 @@ function Products() {
     });
   };
 
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedFiles(files);
+    
+    // Créer des aperçus
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviewImages(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+    if (index < formData.images.length) {
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index)
+      }));
+    } else {
+      setSelectedFiles(prev => prev.filter((_, i) => i !== (index - formData.images.length)));
+    }
+  };
+
+  const addVariant = () => {
+    setFormData(prev => ({
+      ...prev,
+      variants: [...prev.variants, { color_id: '', height_id: '', stock: 0, prix: '' }]
+    }));
+  };
+
+  const removeVariant = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateVariant = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.map((variant, i) => 
+        i === index ? { ...variant, [field]: value } : variant
+      )
+    }));
+  };
+
+  const uploadImages = async () => {
+    if (selectedFiles.length === 0) return formData.images;
+
+    setUploading(true);
+    try {
+      const formDataFiles = new FormData();
+      selectedFiles.forEach(file => {
+        formDataFiles.append('images', file);
+      });
+
+      const response = await api.post('/admin/upload/images', formDataFiles, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return [...formData.images, ...response.data.urls];
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Vous devez être connecté pour ajouter ou modifier un produit.');
-        return;
+      setLoading(true);
+      
+      // Télécharger les images si nécessaire
+      let imageUrls = formData.images;
+      if (selectedFiles.length > 0) {
+        imageUrls = await uploadImages();
       }
-      console.log('Token utilisé pour la requête:', token);
+
       const dataToSend = {
         ...formData,
-        prix: Number(formData.prix),
-        quantite: Number(formData.quantite),
-        images: formData.images
-          ? formData.images.split(',').map((img) => img.trim()).filter(Boolean)
-          : [],
+        prix_base: Number(formData.prix_base),
+        images: imageUrls,
+        variants: formData.variants.filter(v => v.color_id && v.height_id)
       };
-      console.log("Données envoyées à l'API:", dataToSend);
+
       let product;
       if (editingProduct) {
-        const response = await axios.put(
-          `http://localhost:3000/api/products/${editingProduct.id}`,
-          dataToSend,
-          { headers: { Authorization: `Bearer ${token}` } }
+        const response = await api.put(
+          `/admin/products/${editingProduct.id}`,
+          dataToSend
         );
         product = response.data;
       } else {
-        const response = await axios.post(
-          'http://localhost:3000/api/admin/products',
-          dataToSend,
-          { headers: { Authorization: `Bearer ${token}` } }
+        const response = await api.post(
+          '/admin/products',
+          dataToSend
         );
         product = response.data;
-      }
-
-      // Add colors
-      if (formData.colors) {
-        const colors = formData.colors.split(',').map(c => c.trim()).filter(Boolean);
-        for (const color of colors) {
-          await axios.post(
-            `http://localhost:3000/api/admin/products/${product.id}/colors`,
-            { couleur: color },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        }
-      }
-
-      // Add heights
-      if (formData.heights) {
-        const heights = formData.heights.split(',').map(h => h.trim()).filter(Boolean);
-        for (const height of heights) {
-          await axios.post(
-            `http://localhost:3000/api/admin/products/${product.id}/heights`,
-            { hauteur: height },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        }
       }
 
       handleClose();
       fetchProducts();
     } catch (error) {
       console.error('Error saving product:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
       try {
-        const token = localStorage.getItem('token');
-        await axios.delete(`http://localhost:3000/api/products/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.delete(`/admin/products/${id}`);
         fetchProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
@@ -190,16 +260,28 @@ function Products() {
     }
   };
 
+  const getTotalStock = (variants) => {
+    return variants.reduce((total, variant) => total + (variant.stock || 0), 0);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Products</Typography>
+        <Typography variant="h4">Produits</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpen()}
         >
-          Add Product
+          Ajouter un produit
         </Button>
       </Box>
 
@@ -207,37 +289,43 @@ function Products() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
+              <TableCell>Image</TableCell>
+              <TableCell>Nom</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell>Price</TableCell>
-              <TableCell>Stock</TableCell>
-              <TableCell>Brand</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Colors</TableCell>
-              <TableCell>Sizes</TableCell>
+              <TableCell>Prix de base</TableCell>
+              <TableCell>Stock total</TableCell>
+              <TableCell>Marque</TableCell>
+              <TableCell>Catégorie</TableCell>
+              <TableCell>Variantes</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {Array.isArray(products) && products.map((product) => (
+            {products.map((product) => (
               <TableRow key={product.id}>
+                <TableCell>
+                  {product.images && product.images.length > 0 && (
+                    <img 
+                      src={product.images[0]} 
+                      alt={product.nom}
+                      style={{ width: 50, height: 50, objectFit: 'cover' }}
+                    />
+                  )}
+                </TableCell>
                 <TableCell>{product.nom}</TableCell>
                 <TableCell>{product.description}</TableCell>
-                <TableCell>${product.prix}</TableCell>
-                <TableCell>{product.quantite}</TableCell>
+                <TableCell>€{product.prix_base}</TableCell>
+                <TableCell>{getTotalStock(product.variants || [])}</TableCell>
                 <TableCell>{product.marque}</TableCell>
                 <TableCell>{product.categorie}</TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    {product.colors?.map((color) => (
-                      <Chip key={color.id} label={color.couleur} size="small" />
-                    ))}
-                  </Stack>
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    {product.heights?.map((height) => (
-                      <Chip key={height.id} label={height.taille} size="small" />
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {product.variants?.map((variant, index) => (
+                      <Chip 
+                        key={index} 
+                        label={`${variant.colors?.nom} - ${variant.heights?.nom} (${variant.stock})`} 
+                        size="small" 
+                      />
                     ))}
                   </Stack>
                 </TableCell>
@@ -257,94 +345,203 @@ function Products() {
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
-          {editingProduct ? 'Edit Product' : 'Add New Product'}
+          {editingProduct ? 'Modifier le produit' : 'Ajouter un nouveau produit'}
         </DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              label="Name"
-              name="nom"
-              value={formData.nom}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              margin="normal"
-              multiline
-              rows={4}
-            />
-            <TextField
-              fullWidth
-              label="Price"
-              name="prix"
-              type="number"
-              value={formData.prix}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Stock"
-              name="quantite"
-              type="number"
-              value={formData.quantite}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Brand"
-              name="marque"
-              value={formData.marque}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Category"
-              name="categorie"
-              value={formData.categorie}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Image URLs (comma-separated)"
-              name="images"
-              value={formData.images}
-              onChange={handleChange}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Colors (comma-separated)"
-              name="colors"
-              value={formData.colors}
-              onChange={handleChange}
-              margin="normal"
-              helperText="Enter colors separated by commas (e.g., red, blue, green)"
-            />
-            <TextField
-              fullWidth
-              label="Sizes (comma-separated)"
-              name="heights"
-              value={formData.heights}
-              onChange={handleChange}
-              margin="normal"
-              helperText="Enter sizes separated by commas (e.g., S, M, L, XL)"
-            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Nom"
+                  name="nom"
+                  value={formData.nom}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Prix de base (€)"
+                  name="prix_base"
+                  type="number"
+                  value={formData.prix_base}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  margin="normal"
+                  multiline
+                  rows={4}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Marque"
+                  name="marque"
+                  value={formData.marque}
+                  onChange={handleChange}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Catégorie"
+                  name="categorie"
+                  value={formData.categorie}
+                  onChange={handleChange}
+                  margin="normal"
+                />
+              </Grid>
+              
+              {/* Section Images */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                  Images du produit
+                </Typography>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="image-upload"
+                  multiple
+                  type="file"
+                  onChange={handleFileSelect}
+                />
+                <label htmlFor="image-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<UploadIcon />}
+                    disabled={uploading}
+                  >
+                    {uploading ? 'Téléchargement...' : 'Sélectionner des images'}
+                  </Button>
+                </label>
+                
+                {/* Aperçu des images */}
+                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {previewImages.map((image, index) => (
+                    <Card key={index} sx={{ width: 100, position: 'relative' }}>
+                      <CardMedia
+                        component="img"
+                        height="100"
+                        image={image}
+                        alt={`Image ${index + 1}`}
+                      />
+                      <IconButton
+                        size="small"
+                        sx={{ position: 'absolute', top: 0, right: 0, bgcolor: 'rgba(255,255,255,0.8)' }}
+                        onClick={() => removeImage(index)}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </Card>
+                  ))}
+                </Box>
+              </Grid>
+
+              {/* Section Variantes */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                  <Typography variant="h6">
+                    Variantes (Couleur + Taille + Stock)
+                  </Typography>
+                  <Button onClick={addVariant} variant="outlined" size="small">
+                    Ajouter une variante
+                  </Button>
+                </Box>
+                
+                {formData.variants.map((variant, index) => (
+                  <Card key={index} sx={{ mt: 1, p: 2 }}>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} md={3}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Couleur</InputLabel>
+                          <Select
+                            value={variant.color_id}
+                            onChange={(e) => updateVariant(index, 'color_id', e.target.value)}
+                            label="Couleur"
+                          >
+                            {colors.map((color) => (
+                              <MenuItem key={color.id} value={color.id}>
+                                {color.nom}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Taille</InputLabel>
+                          <Select
+                            value={variant.height_id}
+                            onChange={(e) => updateVariant(index, 'height_id', e.target.value)}
+                            label="Taille"
+                          >
+                            {heights.map((height) => (
+                              <MenuItem key={height.id} value={height.id}>
+                                {height.nom}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <TextField
+                          fullWidth
+                          label="Stock"
+                          type="number"
+                          size="small"
+                          value={variant.stock}
+                          onChange={(e) => updateVariant(index, 'stock', Number(e.target.value))}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <TextField
+                          fullWidth
+                          label="Prix (optionnel)"
+                          type="number"
+                          size="small"
+                          value={variant.prix}
+                          onChange={(e) => updateVariant(index, 'prix', e.target.value ? Number(e.target.value) : null)}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <IconButton 
+                          onClick={() => removeVariant(index)}
+                          color="error"
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  </Card>
+                ))}
+              </Grid>
+            </Grid>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingProduct ? 'Save' : 'Add'}
+          <Button onClick={handleClose}>Annuler</Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained"
+            disabled={loading || uploading}
+          >
+            {loading ? 'Enregistrement...' : (editingProduct ? 'Sauvegarder' : 'Ajouter')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,45 +1,121 @@
 // middleware/auth.js
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { supabasePublic } = require('../config/supabase');
 
-// 1) Middleware d'authentification
-//    Vérifie que le token est présent et valide
-//    Si oui, ajoute l'utilisateur dans req.user
-//    Sinon, renvoie une erreur 401
-module.exports = (req, res, next) => {
-  const header = req.headers['authorization'];
-  console.log('Authorization header reçu:', header);
-  if (!header) {
-    return res.status(401).json({ message: 'Token manquant' });
-  }
-
-  const [, token] = header.split(' ');
-  console.log('Token extrait:', token);
-  if (!token) {
-    return res.status(401).json({ message: 'Token mal formé' });
-  }
-
-  console.log('JWT_SECRET utilisé:', process.env.JWT_SECRET);
-  jwt.verify(token, process.env.JWT_SECRET, async (err, payload) => {
-    if (err) {
-      return res.status(401).json({ message: 'Token invalide' });
+// Middleware d'authentification avec Supabase
+const authenticateToken = async (req, res, next) => {
+    try {
+        console.log('🔐 Middleware d\'authentification appelé');
+        console.log('Headers:', req.headers);
+        
+        const authHeader = req.headers.authorization;
+        console.log('Auth header:', authHeader);
+        
+        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        console.log('Token extrait:', token ? 'Token présent' : 'Token manquant');
+        
+        if (!token) {
+            console.log('❌ Token manquant');
+            return res.status(401).json({ message: 'Token d\'accès requis' });
+        }
+        
+        // Vérifier le token avec Supabase
+        console.log('🔍 Vérification du token avec Supabase...');
+        const { data: { user }, error } = await supabasePublic.auth.getUser(token);
+        
+        if (error) {
+            console.log('❌ Erreur Supabase:', error);
+            return res.status(401).json({ message: 'Token invalide' });
+        }
+        
+        if (!user) {
+            console.log('❌ Utilisateur non trouvé');
+            return res.status(401).json({ message: 'Token invalide' });
+        }
+        
+        console.log('✅ Utilisateur authentifié:', user.id);
+        
+        // Récupérer le profil utilisateur complet
+        console.log('🔍 Récupération du profil utilisateur...');
+        const { data: profile, error: profileError } = await supabasePublic
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+        if (profileError) {
+            console.log('❌ Erreur profil:', profileError);
+            return res.status(401).json({ message: 'Profil utilisateur introuvable' });
+        }
+        
+        console.log('✅ Profil récupéré:', profile);
+        
+        // Ajouter les informations utilisateur à la requête
+        req.user = {
+            id: user.id,
+            email: user.email,
+            nom: profile.nom,
+            prenom: profile.prenom,
+            role: profile.role
+        };
+        
+        console.log('✅ Utilisateur ajouté à req.user:', req.user);
+        next();
+    } catch (error) {
+        console.error('❌ Erreur d\'authentification:', error);
+        return res.status(401).json({ message: 'Erreur d\'authentification' });
     }
-    console.log('Payload décodé:', payload);
-    // Récupérer l'utilisateur complet depuis la base de données
-    const user = await User.findByPk(payload.id);
-    console.log('Utilisateur trouvé:', user ? user.toJSON() : null);
-    if (!user) {
-      return res.status(401).json({ message: 'Utilisateur non trouvé' });
-    }
-    req.user = user; // Stocker l'utilisateur complet
-    next();
-  });
 };
 
-// Middleware pour vérifier le rôle administrateur
-module.exports.isAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Accès non autorisé. Rôle administrateur requis.' });
-  }
-  next();
+// Middleware pour vérifier si l'utilisateur est admin
+const isAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentification requise' });
+    }
+    
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Accès refusé - Droits administrateur requis' });
+    }
+    
+    next();
+};
+
+// Middleware pour vérifier si l'utilisateur est vendeur
+const isVendor = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentification requise' });
+    }
+    
+    if (req.user.role !== 'vendor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Accès refusé - Droits vendeur requis' });
+    }
+    
+    next();
+};
+
+// Middleware pour vérifier si l'utilisateur est propriétaire de la ressource
+const isOwner = (resourceUserId) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentification requise' });
+        }
+        
+        // Les admins peuvent accéder à tout
+        if (req.user.role === 'admin') {
+            return next();
+        }
+        
+        // Vérifier si l'utilisateur est propriétaire de la ressource
+        if (req.user.id !== resourceUserId) {
+            return res.status(403).json({ message: 'Accès refusé - Vous n\'êtes pas propriétaire de cette ressource' });
+        }
+        
+        next();
+    };
+};
+
+module.exports = {
+    authenticateToken,
+    isAdmin,
+    isVendor,
+    isOwner
 };

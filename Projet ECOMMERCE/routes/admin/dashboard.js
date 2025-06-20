@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const dashboardController = require('../../controllers/dashboardController');
-const auth = require('../../middleware/auth');
-const isAdmin = require('../../middleware/isAdmin');
+const { authenticateToken, isAdmin } = require('../../middleware/auth');
 
 // Toutes les routes nécessitent une authentification et le rôle admin
-router.use(auth);
-router.use(isAdmin);
+router.use(authenticateToken, isAdmin);
 
 // GET /api/admin/dashboard/sales
 router.get('/sales', dashboardController.getSales);
