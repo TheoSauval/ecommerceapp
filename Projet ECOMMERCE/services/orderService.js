@@ -7,21 +7,24 @@ class OrderService {
             .from('orders')
             .select(`
                 *,
-                orders_products (
+                order_variants (
                     quantity,
                     unit_price,
-                    products (
+                    product_variants (
                         id,
-                        nom,
-                        prix,
-                        description
+                        products (
+                            id,
+                            nom,
+                            prix_base,
+                            description
+                        ),
+                        colors (
+                            nom
+                        ),
+                        heights (
+                            nom
+                        )
                     )
-                ),
-                users (
-                    id,
-                    mail,
-                    nom,
-                    prenom
                 )
             `)
             .eq('user_id', userId)
@@ -37,21 +40,24 @@ class OrderService {
             .from('orders')
             .select(`
                 *,
-                orders_products (
+                order_variants (
                     quantity,
                     unit_price,
-                    products (
+                    product_variants (
                         id,
-                        nom,
-                        prix,
-                        description
+                        products (
+                            id,
+                            nom,
+                            prix_base,
+                            description
+                        ),
+                        colors (
+                            nom
+                        ),
+                        heights (
+                            nom
+                        )
                     )
-                ),
-                users (
-                    id,
-                    mail,
-                    nom,
-                    prenom
                 )
             `)
             .eq('id', orderId)
@@ -186,20 +192,23 @@ class OrderService {
             .from('orders')
             .select(`
                 *,
-                orders_products (
+                order_variants (
                     quantity,
                     unit_price,
-                    products (
+                    product_variants (
                         id,
-                        nom,
-                        prix
+                        products (
+                            id,
+                            nom,
+                            prix_base
+                        ),
+                        colors (
+                            nom
+                        ),
+                        heights (
+                            nom
+                        )
                     )
-                ),
-                users (
-                    id,
-                    mail,
-                    nom,
-                    prenom
                 )
             `)
             .order('created_at', { ascending: false });
@@ -214,21 +223,24 @@ class OrderService {
             .from('orders')
             .select(`
                 *,
-                orders_products (
+                order_variants (
                     quantity,
                     unit_price,
-                    products (
+                    product_variants (
                         id,
-                        nom,
-                        prix,
-                        vendeur_id
+                        products (
+                            id,
+                            nom,
+                            prix_base,
+                            vendeur_id
+                        ),
+                        colors (
+                            nom
+                        ),
+                        heights (
+                            nom
+                        )
                     )
-                ),
-                users (
-                    id,
-                    mail,
-                    nom,
-                    prenom
                 )
             `)
             .order('created_at', { ascending: false });
@@ -237,8 +249,8 @@ class OrderService {
         
         // Filtrer pour ne garder que les commandes contenant des produits du vendeur
         return data.filter(order => 
-            order.orders_products.some(item => 
-                item.products.vendeur_id === vendorId
+            order.order_variants.some(item => 
+                item.product_variants.products.vendeur_id === vendorId
             )
         );
     }

@@ -25,8 +25,6 @@ import {
   Grid,
   Card,
   CardMedia,
-  CardContent,
-  Alert,
   CircularProgress,
 } from '@mui/material';
 import {
@@ -36,6 +34,7 @@ import {
   CloudUpload as UploadIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { useTheme } from '../context/ThemeContext';
 import api from '../config/api';
 
 function Products() {
@@ -48,6 +47,9 @@ function Products() {
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
+  const [variantDetailsOpen, setVariantDetailsOpen] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const { darkMode } = useTheme();
   const [formData, setFormData] = useState({
     nom: '',
     description: '',
@@ -260,6 +262,16 @@ function Products() {
     }
   };
 
+  const handleVariantClick = (variant, product) => {
+    setSelectedVariant({ ...variant, product });
+    setVariantDetailsOpen(true);
+  };
+
+  const handleVariantDetailsClose = () => {
+    setVariantDetailsOpen(false);
+    setSelectedVariant(null);
+  };
+
   const getTotalStock = (variants) => {
     return variants.reduce((total, variant) => total + (variant.stock || 0), 0);
   };
@@ -275,17 +287,26 @@ function Products() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Produits</Typography>
+        <Typography variant="h4" sx={{ color: 'text.primary' }}>Produits</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpen()}
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+            },
+          }}
         >
           Ajouter un produit
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ 
+        background: darkMode ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+        border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+      }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -308,23 +329,31 @@ function Products() {
                     <img 
                       src={product.images[0]} 
                       alt={product.nom}
-                      style={{ width: 50, height: 50, objectFit: 'cover' }}
+                      style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }}
                     />
                   )}
                 </TableCell>
-                <TableCell>{product.nom}</TableCell>
-                <TableCell>{product.description}</TableCell>
-                <TableCell>€{product.prix_base}</TableCell>
-                <TableCell>{getTotalStock(product.variants || [])}</TableCell>
-                <TableCell>{product.marque}</TableCell>
-                <TableCell>{product.categorie}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>{product.nom}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>{product.description}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>€{product.prix_base}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>{getTotalStock(product.variants || [])}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>{product.marque}</TableCell>
+                <TableCell sx={{ color: 'text.primary' }}>{product.categorie}</TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
                     {product.variants?.map((variant, index) => (
                       <Chip 
                         key={index} 
                         label={`${variant.colors?.nom} - ${variant.heights?.nom} (${variant.stock})`} 
-                        size="small" 
+                        size="small"
+                        onClick={() => handleVariantClick(variant, product)}
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: 'primary.light',
+                            color: 'white'
+                          }
+                        }}
                       />
                     ))}
                   </Stack>
@@ -344,7 +373,7 @@ function Products() {
       </TableContainer>
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>
+        <DialogTitle sx={{ color: 'text.primary' }}>
           {editingProduct ? 'Modifier le produit' : 'Ajouter un nouveau produit'}
         </DialogTitle>
         <DialogContent>
@@ -408,7 +437,7 @@ function Products() {
               
               {/* Section Images */}
               <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                <Typography variant="h6" sx={{ mt: 2, mb: 1, color: 'text.primary' }}>
                   Images du produit
                 </Typography>
                 <input
@@ -455,7 +484,7 @@ function Products() {
               {/* Section Variantes */}
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                  <Typography variant="h6">
+                  <Typography variant="h6" sx={{ color: 'text.primary' }}>
                     Variantes (Couleur + Taille + Stock)
                   </Typography>
                   <Button onClick={addVariant} variant="outlined" size="small">
@@ -464,7 +493,7 @@ function Products() {
                 </Box>
                 
                 {formData.variants.map((variant, index) => (
-                  <Card key={index} sx={{ mt: 1, p: 2 }}>
+                  <Card key={index} sx={{ mt: 1, p: 2, background: darkMode ? '#1a1a1a' : '#f8f9fa' }}>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={12} md={3}>
                         <FormControl fullWidth size="small">
@@ -540,9 +569,97 @@ function Products() {
             onClick={handleSubmit} 
             variant="contained"
             disabled={loading || uploading}
+            sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+              },
+            }}
           >
             {loading ? 'Enregistrement...' : (editingProduct ? 'Sauvegarder' : 'Ajouter')}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialogue de détails des variantes */}
+      <Dialog open={variantDetailsOpen} onClose={handleVariantDetailsClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: 'text.primary' }}>
+          Détails de la variante
+        </DialogTitle>
+        <DialogContent>
+          {selectedVariant && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'text.primary' }}>
+                {selectedVariant.product?.nom}
+              </Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Couleur
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'text.primary' }}>
+                    {selectedVariant.colors?.nom}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Taille
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'text.primary' }}>
+                    {selectedVariant.heights?.nom}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Stock disponible
+                  </Typography>
+                  <Typography variant="body1" sx={{ 
+                    color: selectedVariant.stock > 0 ? 'success.main' : 'error.main',
+                    fontWeight: 'bold'
+                  }}>
+                    {selectedVariant.stock} unités
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Prix de base du produit
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'text.primary' }}>
+                    €{selectedVariant.product?.prix_base}
+                  </Typography>
+                </Grid>
+                
+                {selectedVariant.prix && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Prix spécifique de cette variante
+                    </Typography>
+                    <Typography variant="h6" color="primary.main">
+                      €{selectedVariant.prix}
+                    </Typography>
+                  </Grid>
+                )}
+                
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Statut
+                  </Typography>
+                  <Chip 
+                    label={selectedVariant.actif ? 'Active' : 'Inactive'} 
+                    color={selectedVariant.actif ? 'success' : 'default'}
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleVariantDetailsClose}>Fermer</Button>
         </DialogActions>
       </Dialog>
     </Box>
