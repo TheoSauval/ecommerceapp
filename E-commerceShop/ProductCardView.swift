@@ -2,101 +2,78 @@ import SwiftUI
 
 struct ProductCardView: View {
     let product: Product
-    @Binding var favoriteProducts: [Product]
-    @Binding var selectedTab: Int
-
-    @State private var added = false // ✅ État pour l'effet visuel
     @EnvironmentObject var cartManager: CartManager
-
-    var isFavorite: Bool {
-        favoriteProducts.contains(where: { $0.id == product.id })
-    }
+    @EnvironmentObject var favoritesManager: FavoritesManager
 
     var body: some View {
         NavigationLink(destination: ProductDetailView(product: product)) {
             VStack(alignment: .leading, spacing: 8) {
-                ZStack(alignment: .topTrailing) {
-                    Image(product.imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 180)
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-                        .cornerRadius(12)
+                // Product Image
+                AsyncImage(url: URL(string: product.imageName)) { image in
+                    image.resizable()
+                } placeholder: {
+                    ProgressView()
+                }
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 150)
+                .frame(maxWidth: .infinity)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
 
+                // Product Details
+                Text(product.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                
+                Text(product.categorie ?? "N/A")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                // Price and Add to Cart
+                HStack {
+                    Text("€\(String(format: "%.2f", product.prix))")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Spacer()
                     Button(action: {
-                        withAnimation {
-                            toggleFavorite()
+                        // Pour l'instant, on ajoute la première variante disponible
+                        if let variantId = product.product_variants?.first?.id {
+                            cartManager.addToCart(variantId: variantId)
                         }
                     }) {
-                        Image(systemName: isFavorite ? "heart.fill" : "heart")
-                            .foregroundColor(isFavorite ? .red : .black)
+                        Image(systemName: "cart.badge.plus")
                             .padding(8)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                            .padding(8)
+                            .background(Color.black)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                     }
-                    .buttonStyle(PlainButtonStyle()) // évite bug dans NavigationLink
-                }
-
-                Text(product.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-
-                Text(product.category.rawValue)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-
-                HStack(spacing: 4) {
-                    Text("€\(String(format: "%.2f", product.prix))")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-
-                    Spacer()
-
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
-                        .font(.caption)
-
-                    Text(String(format: "%.1f", product.rating))
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-
-                Button(action: {
-                    cartManager.add(product)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation {
-                        added = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation {
-                            added = false
-                        }
-                    }
-                }) {
-                    Text(added ? "Ajouté au panier ✅" : "Ajouter au panier")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(added ? Color.green : Color.black)
-                        .cornerRadius(8)
                 }
             }
-            .padding()
+            .padding(8)
             .background(Color.white)
             .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 5)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(PlainButtonStyle()) // Correction pour l'erreur de compilation
     }
+}
 
-    private func toggleFavorite() {
-        if let index = favoriteProducts.firstIndex(where: { $0.id == product.id }) {
-            favoriteProducts.remove(at: index)
-        } else {
-            favoriteProducts.append(product)
-        }
+struct ProductCardView_Previews: PreviewProvider {
+    static var previews: some View {
+        // Créez une instance de produit factice pour la prévisualisation
+        let sampleProduct = Product(
+            name: "T-Shirt de Designer",
+            category: "Vêtements",
+            imageName: "T-shirt_blanc", // Assurez-vous que cette image existe dans vos assets
+            prix: 39.99,
+            rating: 4.5,
+            description: "Un t-shirt stylé de notre dernière collection."
+        )
+        
+        ProductCardView(product: sampleProduct)
+            .environmentObject(CartManager())
+            .environmentObject(FavoritesManager())
+            .padding()
+            .previewLayout(.sizeThatFits)
     }
 }

@@ -1,61 +1,74 @@
 import SwiftUI
 
 struct AccountView: View {
-    @State private var isLoggedIn = false
-
+    @EnvironmentObject var authService: AuthService
+    @StateObject private var userService = UserService.shared
+    
     var body: some View {
-        NavigationStack {
+        NavigationView {
             VStack {
-                if isLoggedIn {
-                    // ✅ Vue connectée
-                    ProfileView(onLogout: {
-                        isLoggedIn = false
-                    })
-                } else {
-                    // ❌ Vue non connectée
-                    VStack(spacing: 24) {
-                        Image(systemName: "person.circle")
-                            .resizable()
-                            .frame(width: 80, height: 80)
-                            .foregroundColor(.gray)
-                            .padding(.top, 40)
-
-                        Text("Bienvenue dans votre espace client")
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.gray)
-                            .padding(.horizontal)
-
-                        NavigationLink(
-                            destination: LoginView(isLoggedIn: $isLoggedIn)
-                        ) {
-                            Text("Se connecter")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.black)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+                if userService.isLoading {
+                    ProgressView("Chargement du profil...")
+                } else if let profile = userService.userProfile {
+                    Form {
+                        Section(header: Text("Informations Personnelles")) {
+                            HStack {
+                                Text("Nom")
+                                Spacer()
+                                Text(profile.nom)
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Prénom")
+                                Spacer()
+                                Text(profile.prenom)
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Âge")
+                                Spacer()
+                                Text("\(profile.age)")
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Email")
+                                Spacer()
+                                Text(profile.mail)
+                                    .foregroundColor(.secondary)
+                            }
                         }
-
-                        NavigationLink(
-                            destination: RegisterView(isLoggedIn: $isLoggedIn)
-                        ) {
-                            Text("Créer un compte")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+                        
+                        Section {
+                            Button("Se déconnecter") {
+                                authService.logout()
+                            }
+                            .foregroundColor(.red)
                         }
                     }
-                    .padding(.horizontal, 32)
+                } else if let errorMessage = userService.errorMessage {
+                    VStack {
+                        Text("Erreur de chargement")
+                            .font(.headline)
+                        Text(errorMessage)
+                            .foregroundColor(.gray)
+                        Button("Réessayer") {
+                            userService.getProfile()
+                        }
+                        .padding()
+                    }
                 }
-
-                Spacer()
             }
-            .padding()
             .navigationTitle("Mon Compte")
-            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                userService.getProfile()
+            }
         }
+    }
+}
+
+struct AccountView_Previews: PreviewProvider {
+    static var previews: some View {
+        AccountView()
+            .environmentObject(AuthService.shared)
     }
 }

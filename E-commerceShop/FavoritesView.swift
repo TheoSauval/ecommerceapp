@@ -1,39 +1,51 @@
 import SwiftUI
 
 struct FavoritesView: View {
-    @Binding var favorites: [Product]
-    @Binding var selectedTab: Int
-    
+    @EnvironmentObject var favoritesManager: FavoritesManager
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                if favorites.isEmpty {
-                    VStack {
-                        Spacer()
-                        Text("Aucun favori pour le moment.")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                            .padding()
-                            .multilineTextAlignment(.center)
-                        Spacer()
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                } else {
+        NavigationView {
+            VStack {
+                if favoritesManager.isLoading {
                     Spacer()
-                    Text("Vos favoris")
+                    ProgressView()
+                    Spacer()
+                } else if favoritesManager.favorites.isEmpty {
+                    Spacer()
+                    Text("Vous n'avez pas encore de favoris.")
                         .font(.headline)
-                        .padding()
-                        .padding(.top, 0)
-                    
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                        ForEach(favorites) { product in
-                            ProductCardView(product: product, favoriteProducts: $favorites, selectedTab: $selectedTab)
+                        .foregroundColor(.gray)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 20)], spacing: 20) {
+                            ForEach(favoritesManager.favorites) { product in
+                                ProductCardView(product: product)
+                            }
                         }
+                        .padding()
                     }
-                    .padding()
                 }
             }
+            .navigationTitle("Favoris")
+            .onAppear {
+                // Si l'utilisateur est authentifié, chargez les favoris depuis le backend.
+                // Note : La logique d'authentification doit être ajoutée ici.
+                // Pour l'instant, cela suppose que le token est déjà défini.
+                favoritesManager.loadFavorites()
+            }
         }
+    }
+}
+
+struct FavoritesView_Previews: PreviewProvider {
+    static var previews: some View {
+        // Crée une instance de manager pour la prévisualisation
+        let manager = FavoritesManager()
+        // Ajoute des données de test
+        manager.favorites = [allProducts[0], allProducts[2]]
+        
+        return FavoritesView()
+            .environmentObject(manager)
     }
 }
