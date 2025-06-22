@@ -51,6 +51,10 @@ app.use('/api/payments', paymentRoutes);
 const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
 
+// Routes d'analyses vendeur
+const vendorAnalyticsRoutes = require('./routes/vendorAnalytics');
+app.use('/api/vendor-analytics', vendorAnalyticsRoutes);
+
 // Admin routes
 const adminProductRoutes = require('./routes/admin/products');
 app.use('/api/admin/products', adminProductRoutes);

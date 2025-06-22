@@ -9,28 +9,29 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  Avatar,
 } from '@mui/material';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import {
+  Star as StarIcon,
   AttachMoney as MoneyIcon,
   Refresh as RefreshIcon,
+  TrendingUp as TrendingUpIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import { useTheme } from '../context/ThemeContext';
 import api from '../config/api';
 
 const Dashboard = () => {
-  const [salesData, setSalesData] = useState({
-    totalRevenue: 0,
-    salesByMonth: {},
-  });
+  const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { darkMode } = useTheme();
@@ -44,11 +45,10 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem('token');
-      const response = await api.get('/admin/dashboard/sales', {
+      const response = await api.get('/vendor-analytics/my-dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      setSalesData(response.data);
+      setDashboard(response.data.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Erreur lors du chargement des données du dashboard');
@@ -56,11 +56,6 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
-  const monthlyData = Object.entries(salesData.salesByMonth).map(([month, revenue]) => ({
-    month,
-    revenue: parseFloat(revenue.toFixed(2)),
-  }));
 
   const StatCard = ({ title, value, icon, color, subtitle }) => (
     <Card sx={{ 
@@ -130,72 +125,115 @@ const Dashboard = () => {
     <Box sx={{ p: 0 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4}}>
         <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary'}}>
-          Dashboard
+          Mon Dashboard Vendeur
         </Typography>
       </Box>
-      
       <Grid container spacing={3}>
         {/* Carte des revenus totaux */}
         <Grid item xs={12} md={4}>
           <StatCard
             title="Revenu Total"
-            value={`€${salesData.totalRevenue.toFixed(2)}`}
+            value={`€${dashboard?.revenue?.total_revenue?.toFixed(2) || '0.00'}`}
             icon={<MoneyIcon />}
             color="success"
-            subtitle="Toutes les ventes confondues"
+            subtitle="Toutes mes ventes"
           />
         </Grid>
-
-        {/* Graphique des ventes mensuelles */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ 
-            height: 400,
-            background: darkMode ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-            border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
-          }}>
-            <CardContent sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: 'text.primary' }}>
-                Ventes Mensuelles
-              </Typography>
-              {loading ? (
-                <Skeleton variant="rectangular" height={300} />
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#333' : '#e0e0e0'} />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke={darkMode ? '#fff' : '#666'}
-                      tick={{ fill: darkMode ? '#fff' : '#666' }}
-                    />
-                    <YAxis 
-                      stroke={darkMode ? '#fff' : '#666'}
-                      tick={{ fill: darkMode ? '#fff' : '#666' }}
-                    />
-                    <RechartsTooltip 
-                      contentStyle={{
-                        backgroundColor: darkMode ? '#2d2d2d' : '#fff',
-                        border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
-                        borderRadius: 8,
-                        color: darkMode ? '#fff' : '#000',
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#2196f3"
-                      strokeWidth={3}
-                      dot={{ fill: '#2196f3', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: '#2196f3', strokeWidth: 2 }}
-                      name="Revenus (€)"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+        {/* Carte du nombre de produits vendus */}
+        <Grid item xs={12} md={4}>
+          <StatCard
+            title="Produits Vendus"
+            value={dashboard?.revenue?.total_products_sold || 0}
+            icon={<TrendingUpIcon />}
+            color="info"
+            subtitle="Quantité totale vendue"
+          />
+        </Grid>
+        {/* Carte du nombre de commandes */}
+        <Grid item xs={12} md={4}>
+          <StatCard
+            title="Commandes"
+            value={dashboard?.revenue?.total_orders || 0}
+            icon={<ShoppingCartIcon />}
+            color="primary"
+            subtitle="Nombre total de commandes"
+          />
         </Grid>
       </Grid>
+      {/* Tableau des top-produits */}
+      <Box sx={{ mt: 5 }}>
+        <Card sx={{ 
+          background: darkMode ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+          border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+        }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: 'text.primary' }}>
+              Mes Top-Produits
+            </Typography>
+            {loading ? (
+              <Skeleton variant="rectangular" height={200} />
+            ) : (
+              <TableContainer component={Paper} sx={{ 
+                backgroundColor: 'transparent',
+                boxShadow: 'none',
+                border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+              }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ color: darkMode ? '#fff' : '#000', fontWeight: 600, width: '10%' }}></TableCell>
+                      <TableCell sx={{ color: darkMode ? '#fff' : '#000', fontWeight: 600 }}>Produit</TableCell>
+                      <TableCell sx={{ color: darkMode ? '#fff' : '#000', fontWeight: 600 }} align="right">Quantité</TableCell>
+                      <TableCell sx={{ color: darkMode ? '#fff' : '#000', fontWeight: 600 }} align="right">Revenus</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {dashboard?.topProducts?.map((product, index) => {
+                      const imageUrl = product.product_images && product.product_images.length > 0 ? product.product_images[0] : null;
+                      return (
+                        <TableRow key={product.product_id} sx={{ '&:hover': { backgroundColor: darkMode ? '#333' : '#f5f5f5' } }}>
+                          <TableCell>
+                            <Avatar 
+                              variant="rounded" 
+                              src={imageUrl} 
+                              sx={{ width: 56, height: 56, bgcolor: 'grey.700' }}
+                            >
+                              {!imageUrl && <ImageIcon />}
+                            </Avatar>
+                          </TableCell>
+                          <TableCell sx={{ color: darkMode ? '#fff' : '#000' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <StarIcon sx={{ mr: 1, color: index < 3 ? '#ffd700' : '#ccc' }} />
+                              {product.product_name}
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ color: darkMode ? '#fff' : '#000' }} align="right">
+                            {product.total_quantity}
+                          </TableCell>
+                          <TableCell sx={{ color: darkMode ? '#fff' : '#000' }} align="right">
+                            <Chip 
+                              label={`€${product.total_revenue.toFixed(2)}`} 
+                              color="primary" 
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {dashboard?.topProducts?.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} sx={{ color: darkMode ? '#fff' : '#000', textAlign: 'center' }}>
+                          Aucun produit vendu pour le moment
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 };

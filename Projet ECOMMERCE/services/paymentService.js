@@ -179,23 +179,41 @@ class PaymentService {
         switch (event.type) {
             case 'checkout.session.completed':
                 const session = event.data.object;
-                const orderId = session.metadata.orderId;
+                const orderId = parseInt(session.metadata.orderId, 10);
                 
-                // Mettre à jour le statut de la commande
-                await supabase
+                // 1. Mettre à jour le statut de la commande
+                const { error: orderError } = await supabase
                     .from('orders')
                     .update({ status: 'Payé' })
                     .eq('id', orderId);
+
+                if (orderError) {
+                    console.error(`Erreur lors de la mise à jour du statut pour la commande ${orderId}:`, orderError);
+                    break;
+                }
                     
-                // Créer un enregistrement de paiement
-                await supabase
+                // 2. Décrémenter le stock
+                const { error: stockError } = await supabase.rpc('decrease_stock', { order_id_param: orderId });
+
+                if (stockError) {
+                    console.error(`Erreur lors de la décrémentation du stock pour la commande ${orderId}:`, stockError);
+                    // Idéalement, il faudrait notifier un admin ici
+                }
+
+                // 3. Créer un enregistrement de paiement
+                const { error: paymentError } = await supabase
                     .from('payments')
                     .insert([{
                         order_id: orderId,
+                        user_id: session.metadata.userId,
                         amount: session.amount_total / 100,
                         status: 'Payé',
                         stripe_payment_intent_id: session.payment_intent
                     }]);
+                
+                if (paymentError) {
+                    console.error(`Erreur lors de la création du paiement pour la commande ${orderId}:`, paymentError);
+                }
                 break;
                 
             case 'payment_intent.payment_failed':

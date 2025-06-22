@@ -137,7 +137,7 @@ CREATE TABLE public.product_variants (
 CREATE TABLE public.orders (
     id SERIAL PRIMARY KEY,
     prix_total DECIMAL(10, 2) NOT NULL,
-    status TEXT NOT NULL DEFAULT 'En attente' CHECK (status IN ('En attente', 'Expédiée', 'Livrée', 'Annulée')),
+    status TEXT NOT NULL DEFAULT 'En attente' CHECK (status IN ('En attente', 'Payé', 'Expédiée', 'Livrée', 'Annulée', 'Échec du paiement')),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     adresse_livraison TEXT,
     methode_paiement TEXT,
@@ -274,6 +274,31 @@ CREATE TRIGGER update_cart_items_updated_at BEFORE UPDATE ON public.cart_items F
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON public.notifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Fonction pour décrémenter le stock après une commande payée
+CREATE OR REPLACE FUNCTION public.decrease_stock(order_id_param integer)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    variant_record RECORD;
+BEGIN
+    -- Boucler sur chaque article de la commande
+    FOR variant_record IN
+        SELECT variant_id, quantity FROM public.order_variants WHERE order_id = order_id_param
+    LOOP
+        -- Mettre à jour le stock de la variante correspondante
+        -- Ajout d'une sécurité pour ne pas avoir de stock négatif
+        UPDATE public.product_variants
+        SET stock = stock - variant_record.quantity
+        WHERE id = variant_record.variant_id AND stock >= variant_record.quantity;
+
+        -- Optionnel: Log si le stock était insuffisant
+        IF NOT FOUND THEN
+            RAISE WARNING 'Stock insuffisant pour la variante % lors de la commande %', variant_record.variant_id, order_id_param;
+        END IF;
+    END LOOP;
+END;
+$$;
+
 -- Fonction pour créer automatiquement un profil utilisateur
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -360,6 +385,7 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON public.user_profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.user_profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON public.user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can delete own profile" ON public.user_profiles FOR DELETE USING (auth.uid() = id);
 
 -- Politiques pour les vendeurs
 CREATE POLICY "Vendors can view own profile" ON public.vendors FOR SELECT USING (user_id = auth.uid());

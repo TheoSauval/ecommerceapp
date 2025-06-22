@@ -26,7 +26,6 @@ import {
   AccountCircle as AccountCircleIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
-  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useTheme } from '../context/ThemeContext';
 
@@ -63,7 +62,7 @@ const Layout = () => {
       path: '/',
     },
     { 
-      text: 'Products', 
+      text: 'Produits', 
       icon: <InventoryIcon />, 
       path: '/products',
     },
@@ -98,10 +97,10 @@ const Layout = () => {
         </Avatar>
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-            Seller Dashboard
+            Dashboard
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            Manage your store
+            Gérez votre boutique
           </Typography>
         </Box>
       </Box>
@@ -238,24 +237,11 @@ const Layout = () => {
               }
             }}
           >
-            <MenuItem onClick={handleClose}>
-              <ListItemIcon>
-                <AccountCircleIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Profile</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={handleClose}>
-              <ListItemIcon>
-                <SettingsIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Settings</ListItemText>
-            </MenuItem>
-            <Divider />
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>Logout</ListItemText>
+              <ListItemText>Déconnexion</ListItemText>
             </MenuItem>
           </Menu>
         </Toolbar>
