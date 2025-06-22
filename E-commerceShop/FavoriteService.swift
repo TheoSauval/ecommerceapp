@@ -9,7 +9,8 @@ import Foundation
 
 class FavoriteService {
     static let shared = FavoriteService()
-    private let baseURL = "http://localhost:4000/api/users/me/favorites"
+    private let api = APIConfig.shared
+    private let endpoint = "/api/users/me/favorites"
     
     // Token d'authentification (à gérer avec AuthService)
     private var authToken: String?
@@ -29,59 +30,45 @@ class FavoriteService {
     }
     
     func getFavorites(completion: @escaping (Result<[Product], Error>) -> Void) {
-        guard let url = URL(string: baseURL) else { return }
-        let request = createRequest(url: url, method: "GET")
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(NSError(domain: "NoData", code: 0)))
-                return
-            }
-            
-            do {
-                let products = try JSONDecoder().decode([Product].self, from: data)
-                completion(.success(products))
-            } catch {
+        api.request(endpoint: endpoint, method: "GET") { result in
+            switch result {
+            case .success(let data):
+                guard let data = data else {
+                    completion(.failure(APIError.noData))
+                    return
+                }
+                do {
+                    let products = try JSONDecoder().decode([Product].self, from: data)
+                    completion(.success(products))
+                } catch {
+                    completion(.failure(APIError.decodingError(error)))
+                }
+            case .failure(let error):
                 completion(.failure(error))
             }
-        }.resume()
+        }
     }
     
     func addFavorite(productId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let url = URL(string: baseURL) else { return }
-        var request = createRequest(url: url, method: "POST")
-        
-        let body: [String: Any] = [
-            "product_id": productId
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
+        let body = ["product_id": productId]
+        api.request(endpoint: endpoint, method: "POST", body: body) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
                 completion(.failure(error))
-                return
             }
-            
-            completion(.success(()))
-        }.resume()
+        }
     }
     
     func removeFavorite(productId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let url = URL(string: "\(baseURL)/\(productId)") else { return }
-        let request = createRequest(url: url, method: "DELETE")
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
+        api.request(endpoint: "\\(endpoint)/\\(productId)", method: "DELETE") { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
                 completion(.failure(error))
-                return
             }
-            
-            completion(.success(()))
-        }.resume()
+        }
     }
 } 

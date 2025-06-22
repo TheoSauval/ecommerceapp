@@ -30,14 +30,14 @@ struct LoginView: View {
             }
             
             Button(action: {
-                authService.login(mail: email, password: password) { result in
+                authService.login(email: email, password: password) { result in
                     switch result {
                     case .success:
-                        // L'état de l'authentification est géré par l'AuthService
-                        // et la vue changera automatiquement.
-                        break
+                        // La navigation est gérée par le changement d'état dans AuthService
+                        print("Login successful")
                     case .failure(let error):
-                        self.errorMessage = error.localizedDescription
+                        // Afficher l'erreur à l'utilisateur
+                        print("Login failed: \(error.localizedDescription)")
                     }
                 }
             }) {
@@ -49,6 +49,11 @@ struct LoginView: View {
                     .cornerRadius(10)
             }
             .disabled(authService.isLoading)
+            
+            NavigationLink(destination: RegisterView()) {
+                Text("Pas encore de compte ? S'inscrire")
+                    .padding()
+            }
         }
         .padding()
     }

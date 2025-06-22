@@ -4,57 +4,68 @@ struct ProductCardView: View {
     let product: Product
     @EnvironmentObject var cartManager: CartManager
     @EnvironmentObject var favoritesManager: FavoritesManager
+    @EnvironmentObject var viewRouter: ViewRouter
+    @State private var showUnavailableAlert = false
 
     var body: some View {
-        NavigationLink(destination: ProductDetailView(product: product)) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Product Image
-                AsyncImage(url: URL(string: product.imageName)) { image in
-                    image.resizable()
-                } placeholder: {
-                    ProgressView()
-                }
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 150)
-                .frame(maxWidth: .infinity)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(12)
-
-                // Product Details
-                Text(product.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                Text(product.categorie ?? "N/A")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                // Price and Add to Cart
-                HStack {
-                    Text("€\(String(format: "%.2f", product.prix))")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    Spacer()
-                    Button(action: {
-                        // Pour l'instant, on ajoute la première variante disponible
-                        if let variantId = product.product_variants?.first?.id {
-                            cartManager.addToCart(variantId: variantId)
-                        }
-                    }) {
-                        Image(systemName: "cart.badge.plus")
-                            .padding(8)
-                            .background(Color.black)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+        VStack(alignment: .leading, spacing: 8) {
+            NavigationLink(destination: ProductDetailView(product: product)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Product Image
+                    AsyncImage(url: URL(string: product.imageName)) { image in
+                        image.resizable()
+                    } placeholder: {
+                        ProgressView()
                     }
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 150)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(12)
+
+                    // Product Details
+                    Text(product.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Text(product.categorie ?? "N/A")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .padding(8)
-            .background(Color.white)
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 5)
+            .buttonStyle(PlainButtonStyle())
+
+            // Price and Add to Cart
+            HStack {
+                Text("€\(String(format: "%.2f", product.prix))")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: {
+                    if let variantId = product.product_variants?.first?.id {
+                        cartManager.addToCart(variantId: variantId)
+                        viewRouter.currentTab = .cart
+                    } else {
+                        showUnavailableAlert = true
+                    }
+                }) {
+                    Image(systemName: "cart.badge.plus")
+                        .padding(8)
+                        .background(Color.black)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+            }
         }
-        .buttonStyle(PlainButtonStyle()) // Correction pour l'erreur de compilation
+        .padding(8)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 5)
+        .alert("Produit indisponible", isPresented: $showUnavailableAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Ce produit n'a pas d'options disponibles et ne peut pas être ajouté au panier pour le moment.")
+        }
     }
 }
 
@@ -73,6 +84,7 @@ struct ProductCardView_Previews: PreviewProvider {
         ProductCardView(product: sampleProduct)
             .environmentObject(CartManager())
             .environmentObject(FavoritesManager())
+            .environmentObject(ViewRouter())
             .padding()
             .previewLayout(.sizeThatFits)
     }

@@ -1,78 +1,87 @@
 import SwiftUI
 
 struct RegisterView: View {
+    @State private var email = ""
+    @State private var password = ""
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var age = ""
     @EnvironmentObject var authService: AuthService
     @Environment(\.presentationMode) var presentationMode
 
-    @State private var nom = ""
-    @State private var prenom = ""
-    @State private var age = ""
-    @State private var email = ""
-    @State private var password = ""
-    @State private var errorMessage: String?
-
     var body: some View {
-        VStack(spacing: 20) {
+        VStack {
             Text("Créer un compte")
                 .font(.largeTitle)
                 .fontWeight(.bold)
 
-            TextField("Nom", text: $nom)
-            TextField("Prénom", text: $prenom)
-            TextField("Âge", text: $age)
-                .keyboardType(.numberPad)
-            TextField("Email", text: $email)
-                .keyboardType(.emailAddress)
-                .autocapitalization(.none)
-            SecureField("Mot de passe", text: $password)
-
-            if let errorMessage = errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-            }
-
-            Button(action: registerUser) {
-                Text("S'inscrire")
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(authService.isLoading ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-            }
-            .disabled(authService.isLoading)
-        }
-        .textFieldStyle(.roundedBorder)
-        .padding()
-    }
-
-    private func registerUser() {
-        guard let ageInt = Int(age) else {
-            errorMessage = "Veuillez entrer un âge valide."
-            return
-        }
-
-        authService.register(
-            nom: nom,
-            prenom: prenom,
-            age: ageInt,
-            mail: email,
-            password: password
-        ) { result in
-            switch result {
-            case .success:
-                // Connexion automatique après inscription
-                authService.login(mail: email, password: password) { loginResult in
-                    switch loginResult {
-                    case .success:
-                        presentationMode.wrappedValue.dismiss()
-                    case .failure(let error):
-                        self.errorMessage = "Inscription réussie, mais la connexion a échoué: \(error.localizedDescription)"
-                    }
+            Form {
+                Section(header: Text("Informations de compte")) {
+                    TextField("Âge", text: $age)
+                        .keyboardType(.numberPad)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                    SecureField("Mot de passe", text: $password)
                 }
-            case .failure(let error):
-                self.errorMessage = error.localizedDescription
+
+                Section(header: Text("Informations personnelles (Optionnel)")) {
+                    TextField("Prénom", text: $firstName)
+                    TextField("Nom de famille", text: $lastName)
+                }
+
+                if let errorMessage = authService.errorMessage {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                }
+
+                Button(action: {
+                    guard let ageInt = Int(age) else {
+                        // Gérer l'erreur si l'âge n'est pas un nombre valide
+                        authService.errorMessage = "Veuillez entrer un âge valide."
+                        return
+                    }
+                    
+                    authService.register(
+                        email: email,
+                        password: password,
+                        firstName: firstName.isEmpty ? nil : firstName,
+                        lastName: lastName.isEmpty ? nil : lastName,
+                        age: ageInt
+                    ) { result in
+                        switch result {
+                        case .success:
+                            // Log in the user automatically after successful registration
+                            authService.login(email: email, password: password) { loginResult in
+                                switch loginResult {
+                                case .success:
+                                    presentationMode.wrappedValue.dismiss()
+                                case .failure(let error):
+                                    // Handle login error
+                                    print(error.localizedDescription)
+                                }
+                            }
+                        case .failure(let error):
+                            // Handle registration error
+                            if let apiError = error as? APIError {
+                                switch apiError {
+                                case .serverError(let message):
+                                    authService.errorMessage = message
+                                default:
+                                    authService.errorMessage = error.localizedDescription
+                                }
+                            } else {
+                                authService.errorMessage = error.localizedDescription
+                            }
+                        }
+                    }
+                }) {
+                    Text("S'inscrire")
+                }
+                .disabled(authService.isLoading)
             }
         }
+        .navigationTitle("Créer un compte")
     }
 }
 

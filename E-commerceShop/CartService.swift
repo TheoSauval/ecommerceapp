@@ -36,9 +36,9 @@ class CartService {
     
     // Ajoute un produit au panier
     func addToCart(variantId: Int, quantity: Int, completion: @escaping (Result<Void, Error>) -> Void) {
-        let body: [String: Any] = ["variant_id": variantId, "quantity": quantity]
+        let body: [String: Any] = ["variantId": variantId, "quantity": quantity]
         
-        api.request(endpoint: "/api/cart/add", method: "POST", body: body) { result in
+        api.request(endpoint: "/api/cart", method: "POST", body: body) { result in
             switch result {
             case .success:
                 completion(.success(()))
@@ -49,10 +49,10 @@ class CartService {
     }
     
     // Met à jour la quantité d'un article dans le panier
-    func updateCartItem(variantId: Int, quantity: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+    func updateCartItem(cartItemId: Int, quantity: Int, completion: @escaping (Result<Void, Error>) -> Void) {
         let body: [String: Any] = ["quantity": quantity]
         
-        api.request(endpoint: "/api/cart/update/\(variantId)", method: "PUT", body: body) { result in
+        api.request(endpoint: "/api/cart/\(cartItemId)", method: "PUT", body: body) { result in
             switch result {
             case .success:
                 completion(.success(()))
@@ -63,8 +63,8 @@ class CartService {
     }
 
     // Supprime un article du panier
-    func removeFromCart(variantId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
-        api.request(endpoint: "/api/cart/remove/\(variantId)", method: "DELETE") { result in
+    func removeFromCart(cartItemId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        api.request(endpoint: "/api/cart/\(cartItemId)", method: "DELETE") { result in
             switch result {
             case .success:
                 completion(.success(()))

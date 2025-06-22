@@ -13,27 +13,27 @@ struct AccountView: View {
                     Form {
                         Section(header: Text("Informations Personnelles")) {
                             HStack {
-                                Text("Nom")
+                                Text("Nom d'utilisateur")
                                 Spacer()
-                                Text(profile.nom)
+                                Text(profile.username)
                                     .foregroundColor(.secondary)
                             }
                             HStack {
                                 Text("Prénom")
                                 Spacer()
-                                Text(profile.prenom)
+                                Text(profile.first_name ?? "N/A")
                                     .foregroundColor(.secondary)
                             }
                             HStack {
-                                Text("Âge")
+                                Text("Nom")
                                 Spacer()
-                                Text("\(profile.age)")
+                                Text(profile.last_name ?? "N/A")
                                     .foregroundColor(.secondary)
                             }
                             HStack {
                                 Text("Email")
                                 Spacer()
-                                Text(profile.mail)
+                                Text(profile.email)
                                     .foregroundColor(.secondary)
                             }
                         }

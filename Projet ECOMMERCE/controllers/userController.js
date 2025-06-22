@@ -5,13 +5,11 @@ const userService = require('../services/userService');
  * GET /api/users/me
  */
 const getProfile = async (req, res) => {
-  try {
-    const user = await userService.getProfile(req.user.id);
-    res.json(user);
-  } catch (err) {
-    console.error('Get profile error:', err);
-    res.status(404).json({ message: 'Utilisateur introuvable' });
-  }
+  // Les informations de l'utilisateur (y compris le profil) sont déjà chargées par le middleware d'authentification
+  // et stockées dans req.user.
+  // Le modèle Swift UserProfile attend 'mail' mais le middleware fournit 'email'.
+  const { email, ...profile } = req.user;
+  res.json({ ...profile, mail: email });
 };
 
 /**
@@ -19,8 +17,8 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
   try {
-    const { nom, prenom, age, mail } = req.body;
-    const user = await userService.updateProfile(req.user.id, { nom, prenom, age, mail });
+    const { nom, prenom, age } = req.body;
+    const user = await userService.updateProfile(req.user.id, { nom, prenom, age });
     res.json({ message: 'Profil mis à jour', user });
   } catch (err) {
     console.error('Update profile error:', err);

@@ -4,28 +4,46 @@ class ProductService {
     // Récupérer tous les produits avec pagination
     async getAllProducts(page = 1, limit = 10) {
         const offset = (page - 1) * limit;
-        
-        // Récupérer le total
-        const { count } = await supabase
+
+        // Récupérer le total des produits actifs
+        const { count, error: countError } = await supabase
             .from('products')
-            .select('*', { count: 'exact', head: true });
-        
-        // Récupérer les produits
+            .select('*', { count: 'exact', head: true })
+            .eq('actif', true);
+
+        if (countError) throw countError;
+
+        // Récupérer les produits actifs avec leurs variantes
         const { data: products, error } = await supabase
             .from('products')
-            .select('*')
+            .select(`
+                *,
+                product_variants (
+                    *,
+                    colors (id, nom, code_hex),
+                    heights (id, nom, ordre)
+                )
+            `)
+            .eq('actif', true)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
-            
+
         if (error) throw error;
-        
+
+        // Renommer 'product_variants' en 'variants' pour la compatibilité avec le client Swift
+        const productsWithRenamedVariants = products.map(p => ({
+            ...p,
+            variants: p.product_variants || [],
+            product_variants: undefined // Nettoyage
+        }));
+
         return {
-            products,
+            products: productsWithRenamedVariants,
             totalPages: Math.ceil(count / limit),
             currentPage: page
         };
     }
-    
+
     // Rechercher des produits
     async searchProducts(query) {
         const { data, error } = await supabase
@@ -33,11 +51,11 @@ class ProductService {
             .select('*')
             .ilike('nom', `%${query}%`)
             .order('created_at', { ascending: false });
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Récupérer un produit par ID avec ses variantes
     async getProductById(id) {
         const { data: product, error: productError } = await supabase
@@ -45,7 +63,7 @@ class ProductService {
             .select('*')
             .eq('id', id)
             .single();
-            
+
         if (productError) throw productError;
 
         // Récupérer les variantes du produit
@@ -53,8 +71,8 @@ class ProductService {
             .from('product_variants')
             .select(`
                 *,
-                colors (nom, code_hex),
-                heights (nom, ordre)
+                colors (id, nom, code_hex),
+                heights (id, nom, ordre)
             `)
             .eq('product_id', id)
             .eq('actif', true);
@@ -66,7 +84,7 @@ class ProductService {
             variants: variants || []
         };
     }
-    
+
     // Créer un nouveau produit
     async createProduct(productData) {
         const { data, error } = await supabase
@@ -74,11 +92,11 @@ class ProductService {
             .insert([productData])
             .select()
             .single();
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Mettre à jour un produit
     async updateProduct(id, updates) {
         const { data, error } = await supabase
@@ -87,22 +105,22 @@ class ProductService {
             .eq('id', id)
             .select()
             .single();
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Supprimer un produit
     async deleteProduct(id) {
         const { error } = await supabase
             .from('products')
             .delete()
             .eq('id', id);
-            
+
         if (error) throw error;
         return true;
     }
-    
+
     // Récupérer les produits d'un vendeur avec leurs variantes
     async getProductsByVendor(vendorId) {
         const { data: products, error: productsError } = await supabase
@@ -110,7 +128,7 @@ class ProductService {
             .select('*')
             .eq('vendeur_id', vendorId)
             .order('created_at', { ascending: false });
-            
+
         if (productsError) throw productsError;
 
         // Pour chaque produit, récupérer ses variantes
@@ -137,29 +155,29 @@ class ProductService {
 
         return productsWithVariants;
     }
-    
+
     // Récupérer toutes les couleurs disponibles
     async getAllColors() {
         const { data, error } = await supabase
             .from('colors')
             .select('*')
             .order('nom');
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Récupérer toutes les tailles disponibles
     async getAllHeights() {
         const { data, error } = await supabase
             .from('heights')
             .select('*')
             .order('ordre');
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Créer une variante de produit
     async createProductVariant(variantData) {
         const { data, error } = await supabase
@@ -167,11 +185,11 @@ class ProductService {
             .insert([variantData])
             .select()
             .single();
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Mettre à jour une variante de produit
     async updateProductVariant(variantId, updates) {
         const { data, error } = await supabase
@@ -180,22 +198,22 @@ class ProductService {
             .eq('id', variantId)
             .select()
             .single();
-            
+
         if (error) throw error;
         return data;
     }
-    
+
     // Supprimer une variante de produit
     async deleteProductVariant(variantId) {
         const { error } = await supabase
             .from('product_variants')
             .delete()
             .eq('id', variantId);
-            
+
         if (error) throw error;
         return true;
     }
-    
+
     // Récupérer les variantes d'un produit
     async getProductVariants(productId) {
         const { data, error } = await supabase
@@ -207,7 +225,7 @@ class ProductService {
             `)
             .eq('product_id', productId)
             .eq('actif', true);
-            
+
         if (error) throw error;
         return data;
     }

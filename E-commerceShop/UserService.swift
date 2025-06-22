@@ -17,7 +17,7 @@ class UserService: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     
-    private let baseURL = "\(APIConfig.baseURL)/users"
+    private let baseURL = "\(APIConfig.baseURL)/api/users"
     
     private func createRequest(url: URL, method: String, needsAuth: Bool = true) -> URLRequest {
         var request = URLRequest(url: url)

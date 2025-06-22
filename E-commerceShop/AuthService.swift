@@ -30,79 +30,105 @@ class AuthService: ObservableObject {
 
     private let api = APIConfig.shared
     
+    private let baseURL = APIConfig.baseURL
+    
     private init() {
         loadTokens()
     }
 
-    // MARK: - Authentication Methods
-
-    func register(nom: String, prenom: String, age: Int, mail: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        isLoading = true
-        errorMessage = nil
+    private func createRequest(url: URL, method: String, needsAuth: Bool = true) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: Any] = [
-            "nom": nom,
-            "prenom": prenom,
-            "age": age,
-            "mail": mail,
-            "password": password,
-            "role": "user"
-        ]
-        
-        api.request(endpoint: "/api/auth/register", method: "POST", body: body) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                switch result {
-                case .success:
-                    completion(.success(()))
-                case .failure(let error):
-                    let message = self?.extractErrorMessage(from: error) ?? "Une erreur inconnue est survenue."
-                    self?.errorMessage = message
-                    completion(.failure(NSError(domain: "RegisterError", code: 0, userInfo: [NSLocalizedDescriptionKey: message])))
-                }
-            }
+        if needsAuth, let token = accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        return request
     }
 
-    func login(mail: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    // MARK: - Authentication Methods
+
+    func register(email: String, password: String, firstName: String?, lastName: String?, age: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/api/auth/register") else { return }
+        
+        var request = createRequest(url: url, method: "POST", needsAuth: false)
+        
+        var body: [String: Any] = [
+            "mail": email,
+            "password": password,
+            "age": age,
+            "role": "user",
+            "nom": lastName ?? "",
+            "prenom": firstName ?? ""
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 201 else {
+                    if let data = data, let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                        completion(.failure(APIError.serverError(message: errorResponse.message)))
+                    } else {
+                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        completion(.failure(APIError.requestFailed(NSError(domain: "AuthError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Error \(statusCode)"]))))
+                    }
+                    return
+                }
+                
+                completion(.success(()))
+            }
+        }.resume()
+    }
+
+    func login(email: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/api/auth/login") else { return }
+        
+        var request = createRequest(url: url, method: "POST", needsAuth: false)
+        let body: [String: Any] = ["mail": email, "password": password]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
         isLoading = true
         errorMessage = nil
-
-        let body: [String: Any] = ["mail": mail, "password": password]
-
-        api.request(endpoint: "/api/auth/login", method: "POST", body: body) { [weak self] result in
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
-                switch result {
-                case .success(let data):
-                    guard let data = data else {
-                        let error = APIError.noData
-                        self?.errorMessage = self?.extractErrorMessage(from: error)
-                        completion(.failure(error))
-                        return
-                    }
-                    do {
-                        // Décoder la structure de réponse complète
-                        let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
-                        // Créer l'objet AuthTokens attendu par la méthode de gestion
-                        let authTokens = AuthTokens(
-                            accessToken: loginResponse.session.access_token,
-                            refreshToken: loginResponse.session.refresh_token
-                        )
-                        self?.handleSuccessfulAuth(tokens: authTokens)
-                        completion(.success(()))
-                    } catch {
-                        self?.errorMessage = "Échec du décodage des tokens: \(error.localizedDescription)"
-                        print("🚨 [Decoding Error] \(error)")
-                        completion(.failure(error))
-                    }
-                case .failure(let error):
-                    let message = self?.extractErrorMessage(from: error) ?? "Une erreur inconnue est survenue."
+                
+                if let error = error {
+                    self?.errorMessage = error.localizedDescription
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                    let message = "Erreur de connexion (code: \(statusCode))"
                     self?.errorMessage = message
-                    completion(.failure(NSError(domain: "LoginError", code: 0, userInfo: [NSLocalizedDescriptionKey: message])))
+                    completion(.failure(APIError.serverError(message: message)))
+                    return
+                }
+                
+                do {
+                    let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
+                    let authTokens = AuthTokens(
+                        accessToken: loginResponse.session.access_token,
+                        refreshToken: loginResponse.session.refresh_token
+                    )
+                    self?.handleSuccessfulAuth(tokens: authTokens)
+                    completion(.success(()))
+                } catch {
+                    self?.errorMessage = "Échec du décodage des tokens: \(error.localizedDescription)"
+                    completion(.failure(error))
                 }
             }
-        }
+        }.resume()
     }
 
     func logout() {

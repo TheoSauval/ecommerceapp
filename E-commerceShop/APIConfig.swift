@@ -89,7 +89,7 @@ class APIConfig {
                     completion(.success(data))
                 } else {
                     if let data = data, let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                        completion(.failure(APIError.serverError(message: errorResponse.error)))
+                        completion(.failure(APIError.serverError(message: errorResponse.message)))
                     } else {
                         completion(.failure(APIError.invalidResponse))
                     }
@@ -101,5 +101,5 @@ class APIConfig {
 
 // Structure pour décoder les messages d'erreur du serveur
 struct ErrorResponse: Decodable {
-    let error: String
+    let message: String
 } 

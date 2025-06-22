@@ -17,20 +17,16 @@ struct AuthTokens: Decodable {
 
 // MARK: - User Models
 
-struct UserProfile: Codable, Identifiable {
-    let id: String
-    let nom: String
-    let prenom: String
-    let age: Int
-    let role: String
+struct UserProfile: Codable {
+    let id: UUID
+    let username: String
+    let email: String
+    let first_name: String?
+    let last_name: String?
+    let address: String?
+    let phone_number: String?
     let created_at: String
     let updated_at: String
-    let auth_users: AuthUser?
-
-    // Computed property to easily access email
-    var mail: String {
-        auth_users?.email ?? "N/A"
-    }
 }
 
 struct AuthUser: Codable {
@@ -94,9 +90,10 @@ struct Product: Identifiable, Equatable, Codable, Hashable {
         self.updated_at = ""
         self.product_variants = nil
     }
-    
-    enum CodingKeys: String, CodingKey {
-        case id, nom, prix_base, vendeur_id, description, categorie, marque, images, actif, created_at, updated_at, product_variants
+
+     enum CodingKeys: String, CodingKey {
+        case id, nom, prix_base, vendeur_id, description, categorie, marque, images, actif, created_at, updated_at
+        case product_variants = "variants"
     }
     
     static func == (lhs: Product, rhs: Product) -> Bool {
@@ -127,6 +124,12 @@ struct ProductVariant: Codable, Equatable, Identifiable, Hashable {
     let product: Product?
     let color: ProductColor?
     let height: ProductSize?
+
+    enum CodingKeys: String, CodingKey {
+        case id, product_id, color_id, height_id, stock, prix, actif, product
+        case color = "colors"
+        case height = "heights"
+    }
 }
 
 struct ProductColor: Codable, Equatable, Hashable {

@@ -51,9 +51,7 @@ struct CartView: View {
     private func deleteItems(at offsets: IndexSet) {
         let itemsToDelete = offsets.map { cartManager.cartItems[$0] }
         for item in itemsToDelete {
-            if let variantId = item.variant?.id {
-                cartManager.removeFromCart(variantId: variantId)
-            }
+            cartManager.removeFromCart(cartItemId: item.id)
         }
     }
 }
@@ -93,15 +91,11 @@ struct CartItemRow: View {
 
             HStack {
                 Button("-") {
-                    if let variantId = item.variant?.id {
-                        cartManager.decreaseQuantity(variantId: variantId)
-                    }
+                    cartManager.decreaseQuantity(for: item)
                 }
                 Text("\(item.quantity)")
                 Button("+") {
-                    if let variantId = item.variant?.id {
-                        cartManager.increaseQuantity(variantId: variantId)
-                    }
+                    cartManager.increaseQuantity(for: item)
                 }
             }
         }

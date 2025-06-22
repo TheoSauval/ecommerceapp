@@ -58,16 +58,16 @@ class CartManager: ObservableObject {
         }
     }
     
-    func updateQuantity(variantId: Int, newQuantity: Int) {
+    func updateQuantity(cartItemId: Int, newQuantity: Int) {
         guard newQuantity > 0 else {
-            removeFromCart(variantId: variantId)
+            removeFromCart(cartItemId: cartItemId)
             return
         }
         
         isLoading = true
         errorMessage = nil
         
-        cartService.updateCartItem(variantId: variantId, quantity: newQuantity) { [weak self] result in
+        cartService.updateCartItem(cartItemId: cartItemId, quantity: newQuantity) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 switch result {
@@ -80,11 +80,11 @@ class CartManager: ObservableObject {
         }
     }
     
-    func removeFromCart(variantId: Int) {
+    func removeFromCart(cartItemId: Int) {
         isLoading = true
         errorMessage = nil
         
-        cartService.removeFromCart(variantId: variantId) { [weak self] result in
+        cartService.removeFromCart(cartItemId: cartItemId) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 switch result {
@@ -97,16 +97,12 @@ class CartManager: ObservableObject {
         }
     }
     
-    func increaseQuantity(variantId: Int) {
-        if let item = cartItems.first(where: { $0.variant?.id == variantId }) {
-            updateQuantity(variantId: variantId, newQuantity: item.quantity + 1)
-        }
+    func increaseQuantity(for item: CartItem) {
+        updateQuantity(cartItemId: item.id, newQuantity: item.quantity + 1)
     }
     
-    func decreaseQuantity(variantId: Int) {
-        if let item = cartItems.first(where: { $0.variant?.id == variantId }) {
-            updateQuantity(variantId: variantId, newQuantity: item.quantity - 1)
-        }
+    func decreaseQuantity(for item: CartItem) {
+        updateQuantity(cartItemId: item.id, newQuantity: item.quantity - 1)
     }
     
     func clearCart() {
