@@ -20,12 +20,6 @@ struct ProfileView: View {
                             Text("Mes Commandes")
                         }
                     }
-                    NavigationLink(destination: AddressesView()) {
-                        HStack {
-                            Image(systemName: "house")
-                            Text("Adresses de livraison")
-                        }
-                    }
                 }
 
                 Section(header: Text("Paramètres")) {

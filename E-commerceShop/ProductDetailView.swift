@@ -67,10 +67,6 @@ struct ProductDetailView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                             Spacer()
-                            HStack {
-                                Image(systemName: "star.fill")
-                                Text(String(format: "%.1f", p.rating))
-                            }
                             .foregroundColor(.orange)
                         }
 

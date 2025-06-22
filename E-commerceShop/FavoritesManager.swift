@@ -15,10 +15,6 @@ class FavoritesManager: ObservableObject {
     
     private let favoriteService = FavoriteService.shared
     
-    func setAuthToken(_ token: String) {
-        favoriteService.setAuthToken(token)
-    }
-    
     func loadFavorites() {
         isLoading = true
         errorMessage = nil

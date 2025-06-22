@@ -17,16 +17,22 @@ struct AuthTokens: Decodable {
 
 // MARK: - User Models
 
-struct UserProfile: Codable {
-    let id: UUID
-    let username: String
+struct UserProfile: Codable, Identifiable {
+    let id: String
+    let nom: String
+    let prenom: String
+    let age: Int
+    let role: String
     let email: String
-    let first_name: String?
-    let last_name: String?
-    let address: String?
-    let phone_number: String?
     let created_at: String
     let updated_at: String
+
+    // Mapping pour le décodage si les noms de clés JSON ne correspondent pas
+    enum CodingKeys: String, CodingKey {
+        case id, nom, prenom, age, role, email
+        case created_at = "created_at"
+        case updated_at = "updated_at"
+    }
 }
 
 struct AuthUser: Codable {

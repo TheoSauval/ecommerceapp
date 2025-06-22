@@ -1,18 +1,76 @@
 const { supabase } = require('../config/supabase');
 
 class UserService {
-    // Récupérer le profil d'un utilisateur
-    async getProfile(userId) {
-        const { data: profile, error } = await supabase
+    // Récupérer le profil d'un utilisateur par son ID
+    async getProfileById(userId) {
+        let { data: profile, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (error) throw error;
+        // Gérer le cas où le profil n'existe pas (par exemple pour un ancien utilisateur)
+        if (profileError && profileError.code === 'PGRST116') {
+            console.log(`Profil non trouvé pour l'ID ${userId} (PGRST116). Tentative de création à la volée.`);
 
-        // Note: L'email n'est pas dans cette table, il est dans auth.users
-        return profile;
+            // 1. Récupérer les métadonnées depuis auth.users
+            const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+
+            if (authUserError || !authUser.user) {
+                console.error("Impossible de récupérer les données d'authentification pour créer le profil manquant:", authUserError);
+                throw new Error("Utilisateur d'authentification introuvable pour créer le profil.");
+            }
+
+            const { nom, prenom, age, role } = authUser.user.user_metadata || {};
+
+            // 2. Vérifier si on a assez d'infos
+            if (!nom || !prenom || age === undefined) {
+                console.error("Métadonnées (nom, prenom, age) manquantes dans auth.users pour la création du profil :", authUser.user.user_metadata);
+                throw new Error("Données insuffisantes pour créer le profil utilisateur.");
+            }
+
+            // 3. Créer le profil dans la base de données
+            const { data: newProfile, error: insertError } = await supabase
+                .from('user_profiles')
+                .insert({
+                    id: userId,
+                    nom,
+                    prenom,
+                    age,
+                    role: role || 'user'
+                })
+                .select()
+                .single();
+
+            if (insertError) {
+                console.error("Erreur lors de l'insertion du nouveau profil :", insertError);
+                throw insertError;
+            }
+
+            console.log("Profil manquant créé avec succès.");
+            profile = newProfile; // On utilise le profil nouvellement créé
+
+        } else if (profileError) {
+            // Gérer les autres erreurs possibles de la requête
+            console.error("Erreur inattendue lors de la récupération du profil :", profileError);
+            throw profileError;
+        }
+
+        if (!profile) {
+            // Ce cas ne devrait plus arriver, mais par sécurité
+            return null;
+        }
+
+        // Récupérer l'email depuis auth.users pour l'ajouter à la réponse
+        const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+        if (authError) {
+            console.error("Impossible de récupérer l'utilisateur Auth pour l'email:", authError.message);
+        }
+
+        return {
+            ...profile,
+            email: authData?.user?.email ?? ''
+        };
     }
 
     // Mettre à jour le profil d'un utilisateur
@@ -48,10 +106,10 @@ class UserService {
                 return true;
             } catch (adminError) {
                 console.log('Permissions admin non disponibles, suppression manuelle des données...');
-                
+
                 // Méthode 2: Suppression manuelle de toutes les données liées
                 // Supprimer dans l'ordre pour éviter les erreurs de contraintes
-                
+
                 // 1. Supprimer les éléments du panier
                 const { error: cartError } = await supabase
                     .from('cart_items')

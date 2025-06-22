@@ -36,26 +36,48 @@ class UserService: ObservableObject {
             return
         }
         
+        print("🔍 Appel de l'API pour récupérer le profil: \(url)")
+        
         isLoading = true
         errorMessage = nil
         
         URLSession.shared.dataTask(with: createRequest(url: url, method: "GET")) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
+                
                 if let error = error {
+                    print("❌ Erreur réseau: \(error.localizedDescription)")
                     self?.errorMessage = "Erreur réseau: \(error.localizedDescription)"
                     return
                 }
                 
-                guard let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                    self?.errorMessage = "Erreur de serveur ou pas de données"
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Code de réponse HTTP: \(httpResponse.statusCode)")
+                    
+                    if let data = data {
+                        print("📦 Données reçues: \(String(data: data, encoding: .utf8) ?? "Impossible de décoder")")
+                    }
+                    
+                    guard httpResponse.statusCode == 200 else {
+                        print("❌ Erreur HTTP: \(httpResponse.statusCode)")
+                        self?.errorMessage = "Erreur de serveur (code: \(httpResponse.statusCode))"
+                        return
+                    }
+                }
+                
+                guard let data = data else {
+                    print("❌ Aucune donnée reçue")
+                    self?.errorMessage = "Aucune donnée reçue du serveur"
                     return
                 }
                 
                 do {
                     let profile = try JSONDecoder().decode(UserProfile.self, from: data)
+                    print("✅ Profil décodé avec succès: \(profile)")
                     self?.userProfile = profile
                 } catch {
+                    print("❌ Erreur de décodage: \(error)")
+                    print("❌ Détails de l'erreur: \(error.localizedDescription)")
                     self?.errorMessage = "Erreur de décodage: \(error.localizedDescription)"
                 }
             }

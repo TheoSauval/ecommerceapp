@@ -25,23 +25,28 @@ class AuthService {
             throw new Error(authError.message);
         }
 
-        // Insérer explicitement dans user_profiles
-        const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-                id: authUser.user.id,
-                nom: nom,
-                prenom: prenom,
-                age: age,
-                role: role || 'user'
-            })
-            .select()
-            .single();
+        // Le profil est créé automatiquement par un trigger.
+        // On attend un peu pour éviter les race conditions.
+        let profile = null;
+        for (let i = 0; i < 5; i++) {
+            const { data } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('id', authUser.user.id)
+                .single();
 
-        if (profileError) {
-            // En cas d'échec de création du profil, supprimer l'utilisateur Auth pour la cohérence
+            if (data) {
+                profile = data;
+                break;
+            }
+            // Attendre 300ms avant de réessayer
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
+        if (!profile) {
+            // Si le profil n'est toujours pas trouvé, on supprime l'utilisateur pour la cohérence
             await supabase.auth.admin.deleteUser(authUser.user.id);
-            throw profileError;
+            throw new Error("La création du profil utilisateur a échoué après l'authentification.");
         }
 
         // Si c'est un vendeur, créer le profil vendeur
