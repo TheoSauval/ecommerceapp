@@ -40,14 +40,74 @@ class UserService {
 
     // Supprimer le profil d'un utilisateur
     async deleteProfile(userId) {
-        // Cela ne supprime que le profil, pas l'utilisateur dans auth.users
-        const { error } = await supabase
-            .from('user_profiles')
-            .delete()
-            .eq('id', userId);
+        try {
+            // Méthode 1: Supprimer l'utilisateur dans auth.users (nécessite permissions admin)
+            try {
+                const { error } = await supabase.auth.admin.deleteUser(userId);
+                if (error) throw error;
+                return true;
+            } catch (adminError) {
+                console.log('Permissions admin non disponibles, suppression manuelle des données...');
+                
+                // Méthode 2: Suppression manuelle de toutes les données liées
+                // Supprimer dans l'ordre pour éviter les erreurs de contraintes
+                
+                // 1. Supprimer les éléments du panier
+                const { error: cartError } = await supabase
+                    .from('cart_items')
+                    .delete()
+                    .eq('user_id', userId);
+                if (cartError) console.error('Erreur suppression panier:', cartError);
 
-        if (error) throw error;
-        return true;
+                // 2. Supprimer les favoris
+                const { error: favError } = await supabase
+                    .from('favorites')
+                    .delete()
+                    .eq('user_id', userId);
+                if (favError) console.error('Erreur suppression favoris:', favError);
+
+                // 3. Supprimer les notifications
+                const { error: notifError } = await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('user_id', userId);
+                if (notifError) console.error('Erreur suppression notifications:', notifError);
+
+                // 4. Supprimer les paiements
+                const { error: payError } = await supabase
+                    .from('payments')
+                    .delete()
+                    .eq('user_id', userId);
+                if (payError) console.error('Erreur suppression paiements:', payError);
+
+                // 5. Supprimer les commandes (et leurs order_variants via CASCADE)
+                const { error: orderError } = await supabase
+                    .from('orders')
+                    .delete()
+                    .eq('user_id', userId);
+                if (orderError) console.error('Erreur suppression commandes:', orderError);
+
+                // 6. Supprimer le profil vendeur si il existe
+                const { error: vendorError } = await supabase
+                    .from('vendors')
+                    .delete()
+                    .eq('user_id', userId);
+                if (vendorError) console.error('Erreur suppression vendeur:', vendorError);
+
+                // 7. Enfin, supprimer le profil utilisateur
+                const { error: profileError } = await supabase
+                    .from('user_profiles')
+                    .delete()
+                    .eq('id', userId);
+                if (profileError) throw profileError;
+
+                console.log('✅ Suppression manuelle des données utilisateur terminée');
+                return true;
+            }
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            throw err;
+        }
     }
 
     // Récupérer tous les profils (admin)
@@ -119,6 +179,23 @@ class UserService {
 
         if (error) throw error;
         return data;
+    }
+
+    // Vérifier si un utilisateur existe dans auth.users
+    async checkUserExists(userId) {
+        try {
+            const { data, error } = await supabase.auth.admin.getUserById(userId);
+            if (error) {
+                if (error.message.includes('User not found')) {
+                    return false;
+                }
+                throw error;
+            }
+            return !!data.user;
+        } catch (err) {
+            console.error('Error checking user existence:', err);
+            return false;
+        }
     }
 }
 

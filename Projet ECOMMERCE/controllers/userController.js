@@ -32,7 +32,13 @@ const updateProfile = async (req, res) => {
 const deleteProfile = async (req, res) => {
   try {
     await userService.deleteProfile(req.user.id);
-    res.json({ message: 'Compte supprimé' });
+    
+    // Note: L'utilisateur dans auth.users peut rester (selon les permissions)
+    // mais toutes ses données (profil, panier, favoris, etc.) sont supprimées
+    res.json({ 
+      message: 'Compte supprimé avec succès',
+      note: 'Toutes vos données (profil, panier, favoris, commandes) ont été supprimées. Vous devrez vous réinscrire si vous souhaitez utiliser l\'application à nouveau.'
+    });
   } catch (err) {
     console.error('Delete profile error:', err);
     res.status(500).json({ error: err.message });
