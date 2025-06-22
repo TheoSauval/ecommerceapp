@@ -1,0 +1,17 @@
+# Configuration Supabase (requis)
+SUPABASE_URL=https://votre-projet.supabase.co
+SUPABASE_ANON_KEY=votre_clé_anon_supabase
+
+# Configuration Stripe (requis)
+STRIPE_SECRET_KEY=sk_test_votre_clé_secrète_stripe
+
+# Configuration Stripe (optionnel - pour les tests complets)
+STRIPE_WEBHOOK_SECRET=whsec_votre_clé_webhook_stripe
+
+# Configuration Frontend (optionnel)
+FRONTEND_URL=http://localhost:3000
+
+# Configuration des Tests (optionnel)
+# Définir à 'true' pour supprimer automatiquement les données de test
+# Définir à 'false' ou laisser vide pour conserver les données
+CLEANUP_TEST_DATA=false 
