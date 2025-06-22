@@ -1,155 +1,66 @@
 import SwiftUI
 
 struct ProfileView: View {
-    var onLogout: () -> Void
-
-    @State private var selectedItem: ProfileItem? = nil
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 32) {
-                    VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.black)
-                                .frame(width: 80, height: 80)
-
-                            Text("TS")
-                                .foregroundColor(.white)
-                                .font(.title)
-                                .fontWeight(.bold)
-                        }
-
-                        Text("Bonjour Théo")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                    .padding(.top, 32)
-
-                    SectionView(
-                        title: "COMPTE",
-                        items: [
-                            .init(title: "Mes commandes", icon: "bag"),
-                            .init(title: "Mes coordonnées", icon: "person"),
-                            .init(title: "Carnet d'adresses", icon: "book"),
-                            .init(title: "Paramètres", icon: "gear"),
-                        ]
-                    ) { item in
-                        selectedItem = item
-                    }
-
-                    SectionView(
-                        title: "AIDE",
-                        items: [
-                            .init(title: "Assistance client", icon: "questionmark.circle")
-                        ]
-                    ) { item in
-                        selectedItem = item
-                    }
-
-                    SectionView(
-                        title: "AUTRES",
-                        items: [
-                            .init(title: "Social", icon: "person.2")
-                        ]
-                    ) { item in
-                        selectedItem = item
-                    }
-
-                    Button(action: {
-                        onLogout()
-                    }) {
-                        Text("Se déconnecter")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 100)
-            }
-            .background(Color.white.ignoresSafeArea())
-            .navigationTitle("Profil")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(item: $selectedItem) { item in
-                destinationView(for: item)
-            }
-        }
-    }
-
-    @ViewBuilder
-    func destinationView(for item: ProfileItem) -> some View {
-        switch item.title {
-        case "Mes commandes":
-            OrdersView()
-        case "Mes coordonnées":
-            PersonalInfoView()
-        case "Carnet d'adresses":
-            AddressesView()
-        case "Paramètres":
-            SettingsView()
-        case "Assistance client":
-            SupportView()
-        case "Social":
-            SocialLinksView()
-        default:
-            EmptyView()
-        }
-    }
-}
-
-// MARK: - Reusable views
-
-struct SectionView: View {
-    let title: String
-    let items: [ProfileItem]
-    var onItemTap: ((ProfileItem) -> Void)? = nil
+    @EnvironmentObject var authService: AuthService
+    @State private var showingSettings = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.gray)
-                .padding(.horizontal, 4)
-
-            VStack(spacing: 12) {
-                ForEach(items) { item in
-                    Button(action: {
-                        onItemTap?(item)
-                    }) {
+        NavigationView {
+            List {
+                Section(header: Text("Mon Compte")) {
+                    NavigationLink(destination: AccountView()) {
                         HStack {
-                            Image(systemName: item.icon)
-                                .frame(width: 24)
-                                .foregroundColor(.black)
-
-                            Text(item.title)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.black)
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.gray)
+                            Image(systemName: "person.crop.circle")
+                            Text("Informations Personnelles")
                         }
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(8)
+                    }
+                    NavigationLink(destination: OrdersView()) {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                            Text("Mes Commandes")
+                        }
+                    }
+                    NavigationLink(destination: AddressesView()) {
+                        HStack {
+                            Image(systemName: "house")
+                            Text("Adresses de livraison")
+                        }
+                    }
+                }
+
+                Section(header: Text("Paramètres")) {
+                    NavigationLink(destination: SettingsView()) {
+                        HStack {
+                            Image(systemName: "gear")
+                            Text("Paramètres")
+                        }
+                    }
+                    NavigationLink(destination: SupportView()) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                            Text("Support")
+                        }
+                    }
+                }
+
+                Section {
+                    Button(action: {
+                        authService.logout()
+                    }) {
+                        Text("Déconnexion")
+                            .foregroundColor(.red)
                     }
                 }
             }
+            .listStyle(GroupedListStyle())
+            .navigationTitle("Profil")
         }
     }
 }
 
-struct ProfileItem: Identifiable, Hashable {
-    let id = UUID()
-    let title: String
-    let icon: String
+struct ProfileView_Previews: PreviewProvider {
+    static var previews: some View {
+        ProfileView()
+            .environmentObject(AuthService.shared)
+    }
 }

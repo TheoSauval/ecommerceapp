@@ -1,48 +1,62 @@
 import SwiftUI
 
 struct LoginView: View {
-    @Binding var isLoggedIn: Bool
-    @State private var mail = ""
+    @EnvironmentObject var authService: AuthService
+    @State private var email = ""
     @State private var password = ""
-    @State private var errorMessage = ""
-    @State private var showRegister = false
-
+    @State private var errorMessage: String?
+    
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Text("Connexion")
                 .font(.largeTitle)
-
-            TextField("Adresse mail", text: $mail)
+                .fontWeight(.bold)
+            
+            TextField("Email", text: $email)
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
-                .textFieldStyle(.roundedBorder)
 
             SecureField("Mot de passe", text: $password)
-                .textFieldStyle(.roundedBorder)
-
-            if !errorMessage.isEmpty {
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+            
+            if let errorMessage = errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
             }
-
-            Button("Se connecter") {
-                AuthService.shared.login(mail: mail, password: password) { result in
+            
+            Button(action: {
+                authService.login(mail: email, password: password) { result in
                     switch result {
                     case .success:
-                        isLoggedIn = true
+                        // L'état de l'authentification est géré par l'AuthService
+                        // et la vue changera automatiquement.
+                        break
                     case .failure(let error):
-                        errorMessage = error.localizedDescription
+                        self.errorMessage = error.localizedDescription
                     }
                 }
+            }) {
+                Text("Se connecter")
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(authService.isLoading ? Color.gray : Color.black)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
-
-            Button("Créer un compte") {
-                showRegister = true
-            }
-            .sheet(isPresented: $showRegister) {
-                RegisterView(isLoggedIn: $isLoggedIn)
-            }
+            .disabled(authService.isLoading)
         }
         .padding()
+    }
+}
+
+struct LoginView_Previews: PreviewProvider {
+    static var previews: some View {
+        LoginView()
+            .environmentObject(AuthService.shared)
     }
 }

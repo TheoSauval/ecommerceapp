@@ -10,15 +10,66 @@ import SwiftUI
 
 class FavoritesManager: ObservableObject {
     @Published var favorites: [Product] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    
+    private let favoriteService = FavoriteService.shared
+    
+    func setAuthToken(_ token: String) {
+        favoriteService.setAuthToken(token)
+    }
+    
+    func loadFavorites() {
+        isLoading = true
+        errorMessage = nil
+        
+        favoriteService.getFavorites { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                switch result {
+                case .success(let products):
+                    self?.favorites = products
+                case .failure(let error):
+                    self?.errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
     
     func addToFavorites(_ product: Product) {
-        if !favorites.contains(where: { $0.id == product.id }) {
-            favorites.append(product)
+        isLoading = true
+        errorMessage = nil
+        
+        favoriteService.addFavorite(productId: product.id) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                switch result {
+                case .success:
+                    if !(self?.favorites.contains(where: { $0.id == product.id }) ?? true) {
+                        self?.favorites.append(product)
+                    }
+                case .failure(let error):
+                    self?.errorMessage = error.localizedDescription
+                }
+            }
         }
     }
     
     func removeFromFavorites(_ product: Product) {
-        favorites.removeAll() { $0.id == product.id }
+        isLoading = true
+        errorMessage = nil
+        
+        favoriteService.removeFavorite(productId: product.id) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                switch result {
+                case .success:
+                    self?.favorites.removeAll { $0.id == product.id }
+                case .failure(let error):
+                    self?.errorMessage = error.localizedDescription
+                }
+            }
+        }
     }
     
     func isFavorite(_ product: Product) -> Bool {
