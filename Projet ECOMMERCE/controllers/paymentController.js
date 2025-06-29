@@ -56,6 +56,7 @@ exports.initiatePayment = async (req, res) => {
     try {
         const { orderId } = req.body;
         const result = await paymentService.initiateStripePayment(orderId, req.user.id);
+        console.log('DEBUG /api/payments/stripe/initiate result:', result);
         res.json(result);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -76,11 +77,45 @@ exports.getPaymentStatus = async (req, res) => {
 exports.handleWebhook = async (req, res) => {
     try {
         const sig = req.headers['stripe-signature'];
+        console.log('🔔 Réception webhook Stripe');
+        console.log('📋 Headers reçus:', Object.keys(req.headers));
+        console.log('📋 Signature Stripe:', sig ? 'Présente' : 'Absente');
+        console.log('📋 Body length:', req.body ? req.body.length : 'undefined');
+        
+        if (!process.env.STRIPE_WEBHOOK_SECRET) {
+            console.warn('⚠️ STRIPE_WEBHOOK_SECRET non configuré, webhook ignoré');
+            return res.status(200).json({ received: true, warning: 'Webhook secret non configuré' });
+        }
+        
+        if (!sig) {
+            console.error('❌ Signature Stripe manquante');
+            return res.status(400).json({ message: 'Signature Stripe manquante' });
+        }
+        
         const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('🔔 Stripe event reçu:', event.type);
+        console.log('🔔 Event ID:', event.id);
         
         await paymentService.handleStripeWebhook(event);
-        res.json({ received: true });
+        
+        console.log('✅ Webhook traité avec succès');
+        res.json({ received: true, event_type: event.type });
+        
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error('❌ Erreur Stripe webhook:', error.message);
+        console.error('❌ Stack trace:', error.stack);
+        
+        if (error.type === 'StripeSignatureVerificationError') {
+            console.error('❌ Erreur de vérification de signature Stripe');
+            return res.status(400).json({ 
+                message: 'Erreur de vérification de signature',
+                error: error.message 
+            });
+        }
+        
+        res.status(400).json({ 
+            message: 'Erreur lors du traitement du webhook',
+            error: error.message 
+        });
     }
 }; 

@@ -3,7 +3,10 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const paymentController = require('../controllers/paymentController');
 
-// Toutes les routes nécessitent une authentification sauf le webhook Stripe
+// 1️⃣ Route spéciale pour le webhook Stripe (PAS d'authentification)
+router.post('/webhook', paymentController.handleWebhook);
+
+// 2️⃣ Toutes les autres routes nécessitent une authentification
 router.use(authenticateToken);
 
 // POST /api/payments
@@ -23,8 +26,5 @@ router.post('/stripe/initiate', paymentController.initiatePayment);
 
 // GET /api/payments/stripe/:orderId/status
 router.get('/stripe/:orderId/status', paymentController.getPaymentStatus);
-
-// Route spéciale pour le webhook Stripe (pas d'authentification)
-router.post('/webhook', paymentController.handleWebhook);
 
 module.exports = router; 

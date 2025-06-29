@@ -167,7 +167,7 @@ class AuthService: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "refreshToken")
     }
     
-    private func getAccessToken() -> String? {
+    func getAccessToken() -> String? {
         return UserDefaults.standard.string(forKey: "accessToken")
     }
     

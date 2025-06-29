@@ -22,6 +22,7 @@ exports.getOrderById = async (req, res) => {
 
 // POST /api/orders
 exports.createOrder = async (req, res) => {
+    console.log('POST /api/orders appelé, body:', req.body);
     try {
         const { items, adresse_livraison, methode_paiement } = req.body;
 

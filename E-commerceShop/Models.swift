@@ -175,13 +175,13 @@ struct CartItem: Codable, Identifiable, Equatable {
 
 struct Order: Codable, Identifiable {
     let id: Int
-    let prix_total: Double
-    let status: String
+    let prix_total: Double?
+    let status: String?
     let user_id: String?
     let adresse_livraison: String?
     let methode_paiement: String?
-    let created_at: String
-    let updated_at: String
+    let created_at: String?
+    let updated_at: String?
     let order_variants: [OrderVariant]?
 }
 
@@ -292,4 +292,17 @@ let allProducts: [Product] = [
         rating: 5.0,
         description: "T-shirt basique blanc en coton 100%, coupe droite et col rond."
     )
-] 
+]
+
+// MARK: - Modèles pour la création de commande backend (compatibilité Node.js)
+struct OrderItemBackend: Codable {
+    let productId: Int
+    let variantId: Int
+    let quantity: Int
+}
+
+struct OrderRequestBackend: Codable {
+    let items: [OrderItemBackend]
+    let adresse_livraison: String
+    let methode_paiement: String
+} 

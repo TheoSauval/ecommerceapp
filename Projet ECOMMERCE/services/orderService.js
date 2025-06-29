@@ -70,31 +70,33 @@ class OrderService {
     
     // Créer une nouvelle commande
     async createOrder(userId, orderData) {
+        console.log('orderService.createOrder appelé avec:', userId, orderData);
         const { items, adresse_livraison, methode_paiement } = orderData;
         
-        // Vérifier que tous les produits existent et sont en stock
-        const productIds = items.map(item => item.productId);
-        const { data: products } = await supabase
-            .from('products')
-            .select('*')
-            .in('id', productIds);
-            
-        if (products.length !== productIds.length) {
-            throw new Error('Un ou plusieurs produits n\'existent pas');
+        // Récupérer les variantes
+        const variantIds = items.map(item => item.variantId);
+        const { data: variants, error: variantsError } = await supabase
+            .from('product_variants')
+            .select('*, products (id, prix_base)')
+            .in('id', variantIds);
+        if (variantsError) throw variantsError;
+        if (!variants || variants.length !== variantIds.length) {
+            throw new Error('Une ou plusieurs variantes sont introuvables');
         }
         
-        // Vérifier le stock
-        for (const product of products) {
-            const item = items.find(i => i.productId === product.id);
-            if (product.quantite < item.quantity) {
-                throw new Error(`Stock insuffisant pour ${product.nom}`);
+        // Vérifier le stock disponible
+        for (const variant of variants) {
+            const item = items.find(i => i.variantId === variant.id);
+            if (variant.stock < item.quantity) {
+                throw new Error(`Stock insuffisant pour la variante ${variant.id}. Disponible: ${variant.stock}, Demandé: ${item.quantity}`);
             }
         }
         
-        // Calculer le prix total
-        const prix_total = products.reduce((sum, product) => {
-            const item = items.find(i => i.productId === product.id);
-            return sum + product.prix * item.quantity;
+        // Calculer le prix total avec le prix de la variante
+        const prix_total = variants.reduce((sum, variant) => {
+            const item = items.find(i => i.variantId === variant.id);
+            const prix = variant.prix !== undefined && variant.prix !== null ? variant.prix : (variant.products?.prix_base ?? 0);
+            return sum + prix * item.quantity;
         }, 0);
         
         // Créer la commande
@@ -107,38 +109,28 @@ class OrderService {
                 methode_paiement,
                 prix_total
             }])
-            .select()
+            .select('*')
             .single();
-            
+        console.log('TRUC DE DEBUG - Résultat insert commande:', { order, orderError });
         if (orderError) throw orderError;
         
-        // Ajouter les produits à la commande
-        const orderItems = products.map(product => {
-            const item = items.find(i => i.productId === product.id);
+        // Créer les lignes dans order_variants
+        const orderVariants = variants.map(variant => {
+            const item = items.find(i => i.variantId === variant.id);
+            const prix = variant.prix !== undefined && variant.prix !== null ? variant.prix : (variant.products?.prix_base ?? 0);
             return {
                 order_id: order.id,
-                product_id: product.id,
+                variant_id: variant.id,
                 quantity: item.quantity,
-                unit_price: product.prix
+                unit_price: prix
             };
         });
+        const { error: orderVariantsError } = await supabase
+            .from('order_variants')
+            .insert(orderVariants);
+        if (orderVariantsError) throw orderVariantsError;
         
-        const { error: itemsError } = await supabase
-            .from('orders_products')
-            .insert(orderItems);
-            
-        if (itemsError) throw itemsError;
-        
-        // Mettre à jour le stock
-        for (const product of products) {
-            const item = items.find(i => i.productId === product.id);
-            const { error: stockError } = await supabase
-                .from('products')
-                .update({ quantite: product.quantite - item.quantity })
-                .eq('id', product.id);
-                
-            if (stockError) throw stockError;
-        }
+        // NE PAS décrémenter le stock ici - cela se fera après paiement réussi via webhook
         
         return order;
     }

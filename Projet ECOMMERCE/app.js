@@ -24,7 +24,14 @@ app.use(cors({
 }));
 
 // 1) Parse le JSON
-app.use(express.json());
+app.use((req, res, next) => {
+    // Si c'est le webhook Stripe, on utilise express.raw
+    if (req.originalUrl === '/api/payments/webhook') {
+        express.raw({ type: 'application/json' })(req, res, next);
+    } else {
+        express.json()(req, res, next);
+    }
+});
 
 // 2) Routes
 const authRoutes = require('./routes/auth');

@@ -13,6 +13,7 @@ struct E_commerceShopApp: App {
     @StateObject private var authService = AuthService.shared
     @StateObject private var cartManager = CartManager()
     @StateObject private var favoritesManager = FavoritesManager()
+    @StateObject private var urlSchemeHandler = URLSchemeHandler.shared
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,11 @@ struct E_commerceShopApp: App {
                 .environmentObject(authService)
                 .environmentObject(cartManager)
                 .environmentObject(favoritesManager)
+                .environmentObject(urlSchemeHandler)
+                .onOpenURL { url in
+                    // Gérer les URL schemes (retour de Stripe)
+                    urlSchemeHandler.handleURL(url)
+                }
         }
     }
 }
