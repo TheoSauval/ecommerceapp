@@ -4,7 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var userService = UserService.shared
     @State private var notificationsEnabled = true
-    @State private var darkModeEnabled = false
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @State private var showingDeleteAlert = false
 
     var body: some View {

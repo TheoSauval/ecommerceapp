@@ -41,9 +41,7 @@ class FavoritesManager: ObservableObject {
                 self?.isLoading = false
                 switch result {
                 case .success:
-                    if !(self?.favorites.contains(where: { $0.id == product.id }) ?? true) {
-                        self?.favorites.append(product)
-                    }
+                    self?.loadFavorites()
                 case .failure(let error):
                     self?.errorMessage = error.localizedDescription
                 }
@@ -60,7 +58,7 @@ class FavoritesManager: ObservableObject {
                 self?.isLoading = false
                 switch result {
                 case .success:
-                    self?.favorites.removeAll { $0.id == product.id }
+                    self?.loadFavorites()
                 case .failure(let error):
                     self?.errorMessage = error.localizedDescription
                 }

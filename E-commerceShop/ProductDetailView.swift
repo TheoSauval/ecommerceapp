@@ -5,6 +5,7 @@ struct ProductDetailView: View {
     @EnvironmentObject var cartManager: CartManager
     @EnvironmentObject var favoritesManager: FavoritesManager
     @EnvironmentObject var productViewModel: ProductViewModel
+    @Environment(\.colorScheme) var colorScheme
 
     // State for variant selection
     @State private var selectedColor: ProductColor?
@@ -27,7 +28,7 @@ struct ProductDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.white.edgesIgnoringSafeArea(.all)
+            Color(.systemBackground).edgesIgnoringSafeArea(.all)
 
             ScrollView {
                 if let p = displayedProduct {
@@ -79,7 +80,9 @@ struct ProductDetailView: View {
                         if productViewModel.isLoading {
                             ProgressView()
                         } else if !variants.isEmpty {
-                            Divider()
+                            Rectangle()
+                                .frame(height: 1)
+                                .foregroundColor(Color.secondary)
                             // Color Selection
                             let colors = variants.compactMap { $0.colors }.removingDuplicates()
                             if !colors.isEmpty {
@@ -104,22 +107,45 @@ struct ProductDetailView: View {
                             // Size Selection
                             let sizes = variants.compactMap { $0.heights }.removingDuplicates()
                             if !sizes.isEmpty {
-                                Text("Taille").font(.headline)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack {
-                                        ForEach(sizes, id: \.id) { size in
-                                            Text(size.nom)
-                                                .padding()
-                                                .background(selectedSize?.id == size.id ? Color.gray.opacity(0.2) : Color.clear)
-                                                .cornerRadius(8)
-                                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray))
-                                                .onTapGesture {
-                                                    selectedSize = size
-                                                }
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Taille").font(.headline)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack {
+                                            ForEach(sizes, id: \ .id) { size in
+                                                Text(size.nom)
+                                                    .padding()
+                                                    .background(selectedSize?.id == size.id ? Color.gray.opacity(0.2) : Color.clear)
+                                                    .cornerRadius(8)
+                                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray))
+                                                    .onTapGesture {
+                                                        selectedSize = size
+                                                    }
+                                            }
                                         }
                                     }
                                 }
+                                .padding(.horizontal)
                             }
+                            // Ajout d'un margin (espace) sous la sélection de taille
+                            Spacer().frame(height: 4)
+                            Button(action: {
+                                if let variant = selectedVariant {
+                                    cartManager.addToCart(variantId: variant.id)
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "cart.badge.plus")
+                                    Text("Ajouter au panier")
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(colorScheme == .dark ? Color.white : Color.black)
+                                .foregroundColor(colorScheme == .dark ? .black : .white)
+                                .cornerRadius(20)
+                                .shadow(radius: 10)
+                            }
+                            .disabled(selectedVariant == nil)
+                            .padding()
                         }
                         
                         Spacer()
@@ -127,31 +153,6 @@ struct ProductDetailView: View {
                     .padding()
                 } else {
                     ProgressView()
-                }
-            }
-
-            // Add to cart button - only shown if variants are available
-            if !variants.isEmpty {
-                VStack {
-                    Spacer()
-                    Button(action: {
-                        if let variant = selectedVariant {
-                            cartManager.addToCart(variantId: variant.id)
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "cart.badge.plus")
-                            Text("Ajouter au panier")
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(selectedVariant != nil ? Color.black : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                        .shadow(radius: 10)
-                    }
-                    .disabled(selectedVariant == nil)
-                    .padding()
                 }
             }
         }

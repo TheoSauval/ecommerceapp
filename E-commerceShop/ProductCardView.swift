@@ -5,88 +5,96 @@ struct ProductCardView: View {
     @EnvironmentObject var viewRouter: ViewRouter
     @EnvironmentObject var cartManager: CartManager
     @EnvironmentObject var favoritesManager: FavoritesManager
+    @Environment(\.colorScheme) var colorScheme
     
     @State private var showUnavailableAlert = false
     @StateObject private var productViewModel = ProductViewModel()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Image du produit avec le bouton favori en superposition
-            ZStack(alignment: .topTrailing) {
-                AsyncImage(url: URL(string: product.images?.first ?? "")) { image in
-                    image.resizable()
-                } placeholder: {
-                    ProgressView()
-                }
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 150)
-                .frame(maxWidth: .infinity)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(12)
-
-                // Bouton Favori
-                Button(action: {
-                    // Logique de bascule pour les favoris
-                    if favoritesManager.isFavorite(product) {
-                        favoritesManager.removeFromFavorites(product)
-                    } else {
-                        favoritesManager.addToFavorites(product)
-                    }
-                }) {
-                    Image(systemName: favoritesManager.isFavorite(product) ? "heart.fill" : "heart")
-                        .foregroundColor(favoritesManager.isFavorite(product) ? .red : .gray)
-                        .padding(8)
-                        .background(Color.white.opacity(0.8))
-                        .clipShape(Circle())
-                        .shadow(radius: 2)
-                }
-                .padding(10)
-            }
-
-            // Détails du produit
+        ZStack {
             NavigationLink(destination: ProductDetailView(product: product)) {
-                VStack(alignment: .leading) {
-                    Text(product.nom)
-                        .font(.headline)
-                        .lineLimit(1)
-                    
-                    Text(product.categorie ?? "N/A")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    // Image du produit avec le bouton favori en superposition
+                    ZStack(alignment: .topTrailing) {
+                        AsyncImage(url: URL(string: product.images?.first ?? "")) { image in
+                            image.resizable()
+                        } placeholder: {
+                            ProgressView()
+                        }
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 150)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+                    // Détails du produit
+                    VStack(alignment: .leading) {
+                        Text(product.nom)
+                            .font(.headline)
+                            .lineLimit(1)
+                            .foregroundColor(.primary)
+                        Text(product.categorie ?? "N/A")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    // Prix et bouton panier
+                    HStack {
+                        Text("€\(String(format: "%.2f", product.prix_base))")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        Spacer()
+                        // Bouton panier bien visible selon le mode
+                        Button(action: {
+                            if let firstVariant = productViewModel.selectedProduct?.product_variants?.first {
+                                cartManager.addToCart(variantId: firstVariant.id)
+                                viewRouter.currentTab = .cart
+                            } else {
+                                showUnavailableAlert = true
+                            }
+                        }) {
+                            Image(systemName: "cart.badge.plus")
+                                .padding(8)
+                                .background(colorScheme == .dark ? Color.white : Color.black)
+                                .foregroundColor(colorScheme == .dark ? .black : .white)
+                                .cornerRadius(8)
+                        }
+                        .padding(2)
+                    }
                 }
+                .padding(8)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-
-
-            // Prix et bouton d'ajout au panier
-            HStack {
-                Text("€\(String(format: "%.2f", product.prix_base))")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                Button(action: {
-                    // La logique est corrigée pour utiliser `selectedProduct` qui est la bonne variable du ViewModel
-                    if let firstVariant = productViewModel.selectedProduct?.product_variants?.first {
-                        cartManager.addToCart(variantId: firstVariant.id)
-                        viewRouter.currentTab = .cart
-                    } else {
-                        showUnavailableAlert = true
+            // Bouton Favori (au-dessus de la carte)
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        if favoritesManager.isFavorite(product) {
+                            favoritesManager.removeFromFavorites(product)
+                        } else {
+                            favoritesManager.addToFavorites(product)
+                        }
+                    }) {
+                        Image(systemName: favoritesManager.isFavorite(product) ? "heart.fill" : "heart")
+                            .foregroundColor(favoritesManager.isFavorite(product) ? .red : .gray)
+                            .padding(8)
+                            .background(Color(.systemBackground).opacity(0.8))
+                            .clipShape(Circle())
+                            .shadow(radius: 2)
                     }
-                }) {
-                    Image(systemName: "cart.badge.plus")
-                        .padding(8)
-                        .background(Color.black)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                    .padding(10)
                 }
+                Spacer()
             }
         }
-        .padding(8)
-        .background(Color.white)
+        .background(Color(.secondarySystemBackground))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(colorScheme == .dark ? Color.clear : Color.gray.opacity(0.08), lineWidth: 1)
+        )
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 5)
+        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 6)
         .onAppear(perform: fetchProductDetails)
         .alert("Produit indisponible", isPresented: $showUnavailableAlert) {
             Button("OK", role: .cancel) { }
