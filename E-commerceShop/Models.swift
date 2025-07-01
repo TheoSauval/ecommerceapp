@@ -15,6 +15,17 @@ struct AuthTokens: Decodable {
     let refreshToken: String?
 }
 
+// Modèle pour les réponses d'erreur du serveur
+struct ErrorResponse: Codable {
+    let message: String
+}
+
+// Structure pour les réponses de mise à jour du profil
+struct UserProfileUpdateResponse: Codable {
+    let message: String
+    let user: UserProfile
+}
+
 // MARK: - User Models
 
 struct UserProfile: Codable, Identifiable {
@@ -23,7 +34,7 @@ struct UserProfile: Codable, Identifiable {
     let prenom: String
     let age: Int
     let role: String
-    let email: String
+    let email: String?
     let created_at: String
     let updated_at: String
 
@@ -50,8 +61,8 @@ struct UserProfileUpdate: Codable {
 }
 
 struct PasswordChange: Codable {
-    let current_password: String
-    let new_password: String
+    let oldPassword: String
+    let newPassword: String
 }
 
 // MARK: - Product Models

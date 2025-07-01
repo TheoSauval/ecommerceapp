@@ -13,19 +13,10 @@ class OrderService {
                     quantity,
                     unit_price,
                     product_variants (
-                        id,
-                        products (
-                            id,
-                            nom,
-                            prix_base,
-                            description
-                        ),
-                        colors (
-                            nom
-                        ),
-                        heights (
-                            nom
-                        )
+                        *,
+                        products (*),
+                        colors (*),
+                        heights (*)
                     )
                 )
             `)
@@ -33,7 +24,16 @@ class OrderService {
             .order('created_at', { ascending: false });
             
         if (error) throw error;
-        return data;
+        
+        // Transformer les données pour correspondre au modèle Swift
+        return data.map(order => ({
+            ...order,
+            order_variants: order.order_variants?.map(variant => ({
+                ...variant,
+                product_variant: variant.product_variants,
+                product_variants: undefined
+            }))
+        }));
     }
     
     // Récupérer une commande par ID
@@ -48,19 +48,10 @@ class OrderService {
                     quantity,
                     unit_price,
                     product_variants (
-                        id,
-                        products (
-                            id,
-                            nom,
-                            prix_base,
-                            description
-                        ),
-                        colors (
-                            nom
-                        ),
-                        heights (
-                            nom
-                        )
+                        *,
+                        products (*),
+                        colors (*),
+                        heights (*)
                     )
                 )
             `)
@@ -69,7 +60,16 @@ class OrderService {
             .single();
             
         if (error) throw error;
-        return data;
+        
+        // Transformer les données pour correspondre au modèle Swift
+        return {
+            ...data,
+            order_variants: data.order_variants?.map(variant => ({
+                ...variant,
+                product_variant: variant.product_variants,
+                product_variants: undefined
+            }))
+        };
     }
     
     // Créer une nouvelle commande
@@ -194,25 +194,26 @@ class OrderService {
                     quantity,
                     unit_price,
                     product_variants (
-                        id,
-                        products (
-                            id,
-                            nom,
-                            prix_base
-                        ),
-                        colors (
-                            nom
-                        ),
-                        heights (
-                            nom
-                        )
+                        *,
+                        products (*),
+                        colors (*),
+                        heights (*)
                     )
                 )
             `)
             .order('created_at', { ascending: false });
             
         if (error) throw error;
-        return data;
+        
+        // Transformer les données pour correspondre au modèle Swift
+        return data.map(order => ({
+            ...order,
+            order_variants: order.order_variants?.map(variant => ({
+                ...variant,
+                product_variant: variant.product_variants,
+                product_variants: undefined
+            }))
+        }));
     }
     
     // Récupérer les commandes d'un vendeur
@@ -227,19 +228,10 @@ class OrderService {
                     quantity,
                     unit_price,
                     product_variants (
-                        id,
-                        products (
-                            id,
-                            nom,
-                            prix_base,
-                            vendeur_id
-                        ),
-                        colors (
-                            nom
-                        ),
-                        heights (
-                            nom
-                        )
+                        *,
+                        products (*),
+                        colors (*),
+                        heights (*)
                     )
                 )
             `)
@@ -247,10 +239,20 @@ class OrderService {
             
         if (error) throw error;
         
+        // Transformer les données pour correspondre au modèle Swift
+        const transformedData = data.map(order => ({
+            ...order,
+            order_variants: order.order_variants?.map(variant => ({
+                ...variant,
+                product_variant: variant.product_variants,
+                product_variants: undefined
+            }))
+        }));
+        
         // Filtrer pour ne garder que les commandes contenant des produits du vendeur
-        return data.filter(order => 
+        return transformedData.filter(order => 
             order.order_variants.some(item => 
-                item.product_variants.products.vendeur_id === vendorId
+                item.product_variant.products.vendeur_id === vendorId
             )
         );
     }

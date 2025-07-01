@@ -35,9 +35,11 @@ struct LoginView: View {
                     case .success:
                         // La navigation est gérée par le changement d'état dans AuthService
                         print("Login successful")
+                        errorMessage = nil
                     case .failure(let error):
                         // Afficher l'erreur à l'utilisateur
                         print("Login failed: \(error.localizedDescription)")
+                        errorMessage = error.localizedDescription
                     }
                 }
             }) {

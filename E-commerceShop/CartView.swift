@@ -7,9 +7,19 @@ struct CartView: View {
         NavigationView {
             VStack {
                 if cartManager.cartItems.isEmpty {
-                    Text("Votre panier est vide")
-                        .font(.title)
-                        .foregroundColor(.gray)
+                    VStack(spacing: 20) {
+                        Image(systemName: "cart")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+                        Text("Votre panier est vide")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                        Text("Ajoutez des produits pour commencer vos achats")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
                 } else {
                     List {
                         ForEach(cartManager.cartItems, id: \.id) { item in
@@ -27,16 +37,21 @@ struct CartView: View {
                             Spacer()
                             Text(String(format: "%.2f €", cartManager.totalPrice))
                                 .font(.headline)
+                                .fontWeight(.bold)
                         }
                         
                         NavigationLink(destination: CheckoutView()) {
-                            Text("Passer la commande")
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
+                            HStack {
+                                Image(systemName: "creditcard")
+                                Text("Passer la commande")
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
+                        .disabled(cartManager.isLoading)
                     }
                     .padding()
                 }
@@ -45,6 +60,17 @@ struct CartView: View {
             .onAppear {
                 cartManager.fetchCart()
             }
+            .overlay(
+                Group {
+                    if cartManager.isLoading {
+                        ProgressView("Chargement...")
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(10)
+                            .shadow(radius: 5)
+                    }
+                }
+            )
         }
     }
 
@@ -60,6 +86,7 @@ struct CartItemRow: View {
     let itemId: Int
     @EnvironmentObject var cartManager: CartManager
     @State private var selectedQuantity: Int = 1
+    @State private var showingDeleteAlert = false
 
     var body: some View {
         if let item = cartManager.cartItems.first(where: { $0.id == itemId }) {
@@ -136,10 +163,27 @@ struct CartItemRow: View {
                             .foregroundColor(stock < 5 ? .orange : .secondary)
                     }
                 }
+                
+                // Bouton de suppression
+                Button(action: {
+                    showingDeleteAlert = true
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                        .font(.system(size: 16))
+                }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.vertical, 8)
             .contentShape(Rectangle())
-            .onTapGesture { /* Désactive le tap sur toute la ligne */ }
+            .alert("Supprimer l'article", isPresented: $showingDeleteAlert) {
+                Button("Annuler", role: .cancel) { }
+                Button("Supprimer", role: .destructive) {
+                    cartManager.removeFromCart(cartItemId: item.id)
+                }
+            } message: {
+                Text("Êtes-vous sûr de vouloir supprimer cet article de votre panier ?")
+            }
         }
     }
 }

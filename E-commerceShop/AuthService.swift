@@ -109,7 +109,12 @@ class AuthService: ObservableObject {
                 
                 guard let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                    let message = "Erreur de connexion (code: \(statusCode))"
+                    var message = "Erreur de connexion (code: \(statusCode))"
+                    if statusCode == 401 || statusCode == 400 {
+                        message = "Email ou mot de passe incorrect."
+                    } else if let data = data, let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                        message = errorResponse.message
+                    }
                     self?.errorMessage = message
                     completion(.failure(APIError.serverError(message: message)))
                     return

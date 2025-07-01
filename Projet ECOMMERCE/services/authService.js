@@ -143,6 +143,37 @@ class AuthService {
         return { message: 'Mot de passe mis à jour' };
     }
 
+    // Changer le mot de passe (nécessite l'ancien mot de passe)
+    async changePassword(oldPassword, newPassword) {
+        // D'abord, vérifier que l'ancien mot de passe est correct
+        const { data: { user }, error: getUserError } = await supabasePublic.auth.getUser();
+        
+        if (getUserError || !user) {
+            throw new Error('Utilisateur non authentifié');
+        }
+
+        // Vérifier l'ancien mot de passe en tentant une connexion
+        const { error: verifyError } = await supabasePublic.auth.signInWithPassword({
+            email: user.email,
+            password: oldPassword
+        });
+
+        if (verifyError) {
+            throw new Error('Ancien mot de passe incorrect');
+        }
+
+        // Maintenant changer le mot de passe
+        const { error: updateError } = await supabasePublic.auth.updateUser({
+            password: newPassword
+        });
+
+        if (updateError) {
+            throw new Error('Erreur lors du changement de mot de passe');
+        }
+
+        return { message: 'Mot de passe changé avec succès' };
+    }
+
     // Récupérer un utilisateur par ID
     async getUserById(id) {
         const { data, error } = await supabase
