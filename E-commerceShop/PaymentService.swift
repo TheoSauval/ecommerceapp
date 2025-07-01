@@ -10,7 +10,7 @@ import UIKit
 
 class PaymentService {
     static let shared = PaymentService()
-    private let baseURL = "http://localhost:4000/api/payments"
+    private let baseURL = "\(APIConfig.baseURL)/api/payments"
     
     // Token d'authentification (à gérer avec AuthService)
     private var authToken: String?
