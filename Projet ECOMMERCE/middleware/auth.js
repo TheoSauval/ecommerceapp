@@ -1,5 +1,5 @@
 // middleware/auth.js
-const { supabasePublic } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 // Middleware d'authentification avec Supabase
 const authenticateToken = async (req, res, next) => {
@@ -20,7 +20,7 @@ const authenticateToken = async (req, res, next) => {
 
         // Vérifier le token avec Supabase
         console.log('🔍 Vérification du token avec Supabase...');
-        const { data: { user }, error } = await supabasePublic.auth.getUser(token);
+        const { data: { user }, error } = await supabase.auth.getUser(token);
 
         if (error) {
             console.log('❌ Erreur Supabase:', error);
@@ -36,7 +36,7 @@ const authenticateToken = async (req, res, next) => {
 
         // Récupérer le profil utilisateur complet
         console.log('🔍 Récupération du profil utilisateur...');
-        const { data: profile, error: profileError } = await supabasePublic
+        const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', user.id)

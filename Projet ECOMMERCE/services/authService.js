@@ -1,4 +1,4 @@
-const { supabase, supabasePublic } = require('../config/supabase');
+const { supabase, createMobileClient, createDashboardClient } = require('../config/supabase');
 
 class AuthService {
     // Inscription d'un utilisateur avec Supabase Auth
@@ -68,10 +68,13 @@ class AuthService {
         };
     }
 
-    // Connexion d'un utilisateur avec Supabase Auth
-    async login(mail, password) {
+    // Connexion d'un utilisateur avec Supabase Auth (version mobile)
+    async loginMobile(mail, password) {
+        // Utiliser un client séparé pour l'app mobile
+        const mobileClient = createMobileClient();
+        
         // Connexion avec Supabase Auth
-        const { data: authData, error: authError } = await supabasePublic.auth.signInWithPassword({
+        const { data: authData, error: authError } = await mobileClient.auth.signInWithPassword({
             email: mail,
             password: password
         });
@@ -97,13 +100,77 @@ class AuthService {
                 prenom: profile.prenom,
                 role: profile.role
             },
-            session: authData.session
+            session: {
+                access_token: authData.session.access_token,
+                refresh_token: authData.session.refresh_token,
+                expires_at: authData.session.expires_at
+            }
         };
+    }
+
+    // Connexion d'un utilisateur avec Supabase Auth (version dashboard)
+    async loginDashboard(mail, password) {
+        // Utiliser un client séparé pour le dashboard
+        const dashboardClient = createDashboardClient();
+        
+        // Connexion avec Supabase Auth
+        const { data: authData, error: authError } = await dashboardClient.auth.signInWithPassword({
+            email: mail,
+            password: password
+        });
+
+        if (authError) {
+            throw new Error('Identifiants invalides');
+        }
+
+        // Récupérer le profil utilisateur
+        const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError) throw profileError;
+
+        return {
+            user: {
+                id: authData.user.id,
+                email: authData.user.email,
+                nom: profile.nom,
+                prenom: profile.prenom,
+                role: profile.role
+            },
+            session: {
+                access_token: authData.session.access_token,
+                refresh_token: authData.session.refresh_token,
+                expires_at: authData.session.expires_at
+            }
+        };
+    }
+
+    // Connexion générique (pour compatibilité)
+    async login(mail, password) {
+        // Par défaut, utiliser la version mobile
+        return this.loginMobile(mail, password);
     }
 
     // Rafraîchir la session
     async refreshSession(refreshToken) {
-        const { data, error } = await supabasePublic.auth.refreshSession({
+        // Utiliser le client générique pour le rafraîchissement
+        const { createClient } = require('@supabase/supabase-js');
+        const tempClient = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY,
+            {
+                auth: {
+                    autoRefreshToken: true,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                }
+            }
+        );
+
+        const { data, error } = await tempClient.auth.refreshSession({
             refresh_token: refreshToken
         });
 
@@ -115,9 +182,21 @@ class AuthService {
     }
 
     // Déconnexion
-    async logout() {
-        const { error } = await supabasePublic.auth.signOut();
-        if (error) throw error;
+    async logout(token = null) {
+        if (token) {
+            // Déconnecter une session spécifique
+            const { error } = await supabase.auth.admin.signOut(token);
+            if (error) throw error;
+        } else {
+            // Déconnexion générale (pour compatibilité)
+            const { createClient } = require('@supabase/supabase-js');
+            const tempClient = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+            const { error } = await tempClient.auth.signOut();
+            if (error) throw error;
+        }
         return { message: 'Déconnexion réussie' };
     }
 

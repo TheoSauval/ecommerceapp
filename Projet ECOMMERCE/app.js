@@ -19,7 +19,7 @@ app.use((req, res, next) => {
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client-type'],
     credentials: true
 }));
 

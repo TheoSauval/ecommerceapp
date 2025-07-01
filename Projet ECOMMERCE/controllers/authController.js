@@ -60,8 +60,25 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Email et mot de passe requis' });
     }
 
-    // Connexion
-    const result = await authService.login(mail, password);
+    // Détecter le type de client basé sur les headers
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobile = userAgent.includes('E-commerceShop') || userAgent.includes('CFNetwork');
+    const isDashboard = req.headers['x-client-type'] === 'dashboard' || userAgent.includes('Mozilla');
+
+    console.log('🔍 Détection du type de client:');
+    console.log('   - User-Agent:', userAgent);
+    console.log('   - Is Mobile:', isMobile);
+    console.log('   - Is Dashboard:', isDashboard);
+
+    // Choisir la méthode de connexion appropriée
+    let result;
+    if (isDashboard) {
+      console.log('💻 Utilisation de la méthode de connexion dashboard');
+      result = await authService.loginDashboard(mail, password);
+    } else {
+      console.log('📱 Utilisation de la méthode de connexion mobile');
+      result = await authService.loginMobile(mail, password);
+    }
 
     res.json({
       message: 'Connexion réussie',
@@ -71,7 +88,6 @@ const login = async (req, res) => {
         refresh_token: result.session.refresh_token,
         expires_at: result.session.expires_at
       }
-
     });
   } catch (error) {
     console.error('Erreur lors de la connexion:', error);
@@ -84,7 +100,15 @@ const login = async (req, res) => {
  */
 const logout = async (req, res) => {
   try {
-    await authService.logout();
+    // Récupérer le token de la requête
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      // Déconnecter spécifiquement cette session
+      await authService.logout(token);
+    }
+    
     res.json({ message: 'Déconnexion réussie' });
   } catch (error) {
     console.error('Erreur lors de la déconnexion:', error);

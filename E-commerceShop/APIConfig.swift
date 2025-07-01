@@ -108,6 +108,22 @@ class APIConfig {
                     print("📄 [API Response Data] \(dataString)")
                 }
 
+                // Si le token est expiré (401), essayer de le rafraîchir
+                if httpResponse.statusCode == 401 && method != "POST" {
+                    print("🔄 [API] Token expiré, tentative de rafraîchissement...")
+                    AuthService.shared.validateAndRefreshToken { success in
+                        if success {
+                            print("✅ [API] Token rafraîchi avec succès, nouvelle tentative...")
+                            // Réessayer la requête avec le nouveau token
+                            self.request(endpoint: endpoint, method: method, body: body, completion: completion)
+                        } else {
+                            print("❌ [API] Échec du rafraîchissement du token")
+                            completion(.failure(APIError.serverError(message: "Session expirée")))
+                        }
+                    }
+                    return
+                }
+
                 if (200...299).contains(httpResponse.statusCode) {
                     completion(.success(data))
                 } else {

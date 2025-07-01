@@ -137,9 +137,20 @@ class AuthService: ObservableObject {
     }
 
     func logout() {
-        // Vous pouvez également appeler un endpoint /api/auth/logout ici
-        // pour invalider le token côté serveur.
-        clearTokens()
+        // Appeler l'endpoint de déconnexion côté serveur
+        guard let url = URL(string: "\(baseURL)/api/auth/logout") else { 
+            clearTokens()
+            return 
+        }
+        
+        let request = createRequest(url: url, method: "POST")
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                // Toujours nettoyer les tokens localement, même si la requête échoue
+                self?.clearTokens()
+            }
+        }.resume()
     }
     
     // MARK: - Token Management
@@ -190,5 +201,56 @@ class AuthService: ObservableObject {
             }
         }
         return error.localizedDescription
+    }
+
+    // MARK: - Token Validation and Refresh
+    
+    func validateAndRefreshToken(completion: @escaping (Bool) -> Void) {
+        guard let refreshToken = UserDefaults.standard.string(forKey: "refreshToken") else {
+            completion(false)
+            return
+        }
+        
+        guard let url = URL(string: "\(baseURL)/api/auth/refresh") else {
+            completion(false)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body = ["refresh_token": refreshToken]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Erreur lors du rafraîchissement du token: \(error)")
+                    completion(false)
+                    return
+                }
+                
+                guard let data = data,
+                      let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    completion(false)
+                    return
+                }
+                
+                do {
+                    let refreshResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
+                    let authTokens = AuthTokens(
+                        accessToken: refreshResponse.session.access_token,
+                        refreshToken: refreshResponse.session.refresh_token
+                    )
+                    self?.handleSuccessfulAuth(tokens: authTokens)
+                    completion(true)
+                } catch {
+                    print("Erreur lors du décodage de la réponse de rafraîchissement: \(error)")
+                    completion(false)
+                }
+            }
+        }.resume()
     }
 }
