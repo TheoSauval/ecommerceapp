@@ -81,6 +81,8 @@ class OrderViewModel: ObservableObject {
     }
     
     func getOrderNumber(_ order: Order) -> String {
-        return "Commande #\(order.id)"
+        // Utiliser les 8 premiers caractères de l'UUID pour un affichage plus court
+        let shortId = String(order.id.prefix(8)).uppercased()
+        return "Commande #\(shortId)"
     }
 } 
