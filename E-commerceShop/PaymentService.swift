@@ -10,7 +10,7 @@ import UIKit
 
 class PaymentService {
     static let shared = PaymentService()
-    private let baseURL = "http://localhost:4000/api/payments"
+    private let baseURL = "\(APIConfig.baseURL)/api/payments"
     
     // Token d'authentification (à gérer avec AuthService)
     private var authToken: String?
@@ -53,7 +53,7 @@ class PaymentService {
         }.resume()
     }
     
-    func getPaymentById(id: Int, completion: @escaping (Result<Payment, Error>) -> Void) {
+    func getPaymentById(id: String, completion: @escaping (Result<Payment, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/\(id)") else { return }
         let request = createRequest(url: url, method: "GET")
         
@@ -134,7 +134,7 @@ class PaymentService {
     }
     
     /// Initie un paiement Stripe pour une commande
-    func initiateStripePayment(orderId: Int, completion: @escaping (Result<StripeSessionResponse, Error>) -> Void) {
+    func initiateStripePayment(orderId: String, completion: @escaping (Result<StripeSessionResponse, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/stripe/initiate") else { return }
         var request = createRequest(url: url, method: "POST")
         
@@ -162,7 +162,7 @@ class PaymentService {
     }
     
     /// Récupère le statut d'un paiement Stripe
-    func getStripePaymentStatus(orderId: Int, completion: @escaping (Result<StripePaymentStatus, Error>) -> Void) {
+    func getStripePaymentStatus(orderId: String, completion: @escaping (Result<StripePaymentStatus, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/stripe/\(orderId)/status") else { return }
         let request = createRequest(url: url, method: "GET")
         

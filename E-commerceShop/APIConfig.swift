@@ -8,13 +8,30 @@
 import Foundation
 
 // Enum pour les erreurs d'API personnalisées
-enum APIError: Error {
+enum APIError: Error, LocalizedError {
     case invalidURL
     case requestFailed(Error)
     case invalidResponse
     case decodingError(Error)
     case noData
     case serverError(message: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "URL invalide."
+        case .requestFailed(let error):
+            return error.localizedDescription
+        case .invalidResponse:
+            return "Réponse du serveur invalide."
+        case .decodingError:
+            return "Erreur de décodage des données."
+        case .noData:
+            return "Aucune donnée reçue du serveur."
+        case .serverError(let message):
+            return message
+        }
+    }
 }
 
 class APIConfig {
@@ -103,9 +120,4 @@ class APIConfig {
             }
         }.resume() // DÉMARRE LA REQUÊTE
     }
-}
-
-// Structure pour décoder les messages d'erreur du serveur
-struct ErrorResponse: Decodable {
-    let message: String
 } 

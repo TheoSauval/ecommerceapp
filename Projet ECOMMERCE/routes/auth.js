@@ -8,6 +8,7 @@ const {
   refreshSession,
   requestPasswordReset,
   resetPassword,
+  changePassword,
   getProfile,
   updateProfile
 } = require('../controllers/authController');
@@ -30,6 +31,9 @@ router.post('/reset', requestPasswordReset);
 
 // reset du mot de passe { newPassword }
 router.put('/reset', resetPassword);
+
+// changer le mot de passe { oldPassword, newPassword }
+router.put('/change-password', authenticateToken, changePassword);
 
 // récupérer le profil utilisateur (authentifié)
 router.get('/profile', authenticateToken, getProfile);

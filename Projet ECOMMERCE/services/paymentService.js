@@ -144,7 +144,7 @@ class PaymentService {
             success_url: `ecommerceshop://payment/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `ecommerceshop://payment/cancel`,
             metadata: {
-                orderId: order.id.toString(),
+                orderId: order.id, // order.id est déjà un string (UUID)
                 userId: userId
             }
         });
@@ -166,10 +166,10 @@ class PaymentService {
             throw new Error('Commande non trouvée');
         }
         
-        // Récupérer les paiements Stripe pour cette commande
-        const payments = await stripe.paymentIntents.list({
-            metadata: { orderId: order.id.toString() }
-        });
+                        // Récupérer les paiements Stripe pour cette commande
+                const payments = await stripe.paymentIntents.list({
+                    metadata: { orderId: order.id } // order.id est déjà un string (UUID)
+                });
         
         if (payments.data.length === 0) {
             return { status: 'En attente' };
@@ -191,7 +191,7 @@ class PaymentService {
         switch (event.type) {
             case 'checkout.session.completed':
                 const session = event.data.object;
-                const orderId = parseInt(session.metadata.orderId, 10);
+                const orderId = session.metadata.orderId; // Maintenant c'est un UUID (string)
                 const userId = session.metadata.userId;
                 
                 console.log(`🔔 Traitement paiement réussi pour commande ${orderId}, utilisateur ${userId}`);

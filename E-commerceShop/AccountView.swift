@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var userService = UserService.shared
+    @State private var showingEditProfile = false
     
     var body: some View {
         NavigationView {
@@ -27,7 +28,7 @@ struct AccountView: View {
                             HStack {
                                 Text("Email")
                                 Spacer()
-                                Text(profile.email)
+                                Text(profile.email ?? "Non renseigné")
                                     .foregroundColor(.secondary)
                             }
                             HStack {
@@ -36,6 +37,18 @@ struct AccountView: View {
                                 Text("\(profile.age)")
                                     .foregroundColor(.secondary)
                             }
+                        }
+                        
+                        Section {
+                            Button(action: {
+                                showingEditProfile = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "pencil")
+                                    Text("Modifier le profil")
+                                }
+                            }
+                            .foregroundColor(.blue)
                         }
                         
                         Section {
@@ -61,6 +74,10 @@ struct AccountView: View {
             .navigationTitle("Mon Compte")
             .onAppear {
                 userService.getProfile()
+            }
+            .sheet(isPresented: $showingEditProfile) {
+                EditProfileView()
+                    .environmentObject(authService)
             }
         }
     }

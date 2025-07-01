@@ -220,7 +220,7 @@ struct CheckoutView: View {
         }
     }
     
-    private func createOrder(completion: @escaping (Result<Int, Error>) -> Void) {
+    private func createOrder(completion: @escaping (Result<String, Error>) -> Void) {
         // Vérification du stock avant de créer la commande
         let outOfStockItems = cartManager.cartItems.filter { ($0.product_variant?.stock ?? 0) < $0.quantity }
         if !outOfStockItems.isEmpty {

@@ -13,7 +13,7 @@ class PaymentViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var paymentStatus: PaymentStatus = .idle
-    @Published var currentOrderId: Int?
+    @Published var currentOrderId: String?
     
     private let paymentService = PaymentService.shared
     private let orderService = OrderService.shared
@@ -42,7 +42,7 @@ class PaymentViewModel: ObservableObject {
     }
     
     /// Initie le processus de paiement pour une commande
-    func initiatePayment(for orderId: Int) {
+    func initiatePayment(for orderId: String) {
         guard !isLoading else { return }
         
         isLoading = true

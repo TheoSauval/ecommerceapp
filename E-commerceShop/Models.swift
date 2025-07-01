@@ -15,6 +15,17 @@ struct AuthTokens: Decodable {
     let refreshToken: String?
 }
 
+// Modèle pour les réponses d'erreur du serveur
+struct ErrorResponse: Codable {
+    let message: String
+}
+
+// Structure pour les réponses de mise à jour du profil
+struct UserProfileUpdateResponse: Codable {
+    let message: String
+    let user: UserProfile
+}
+
 // MARK: - User Models
 
 struct UserProfile: Codable, Identifiable {
@@ -23,7 +34,7 @@ struct UserProfile: Codable, Identifiable {
     let prenom: String
     let age: Int
     let role: String
-    let email: String
+    let email: String?
     let created_at: String
     let updated_at: String
 
@@ -50,8 +61,8 @@ struct UserProfileUpdate: Codable {
 }
 
 struct PasswordChange: Codable {
-    let current_password: String
-    let new_password: String
+    let oldPassword: String
+    let newPassword: String
 }
 
 // MARK: - Product Models
@@ -172,7 +183,7 @@ struct CartItem: Codable, Identifiable, Equatable {
 // MARK: - Order Models
 
 struct Order: Codable, Identifiable {
-    let id: Int
+    let id: String // Changé de Int à String pour supporter les UUIDs
     let prix_total: Double?
     let status: String?
     let user_id: String?
@@ -184,7 +195,7 @@ struct Order: Codable, Identifiable {
 }
 
 struct OrderVariant: Codable {
-    let order_id: Int
+    let order_id: String // Changé de Int à String pour supporter les UUIDs
     let variant_id: Int
     let quantity: Int
     let unit_price: Double
@@ -208,7 +219,7 @@ struct OrderItemRequest: Codable {
 
 struct Payment: Codable, Identifiable {
     let id: Int
-    let order_id: Int?
+    let order_id: String?
     let user_id: String?
     let amount: Double
     let status: String
@@ -220,7 +231,7 @@ struct Payment: Codable, Identifiable {
 }
 
 struct PaymentRequest: Codable {
-    let order_id: Int
+    let order_id: String
     let amount: Double
     let stripe_payment_intent_id: String?
 }

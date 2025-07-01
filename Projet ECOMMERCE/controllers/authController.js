@@ -161,6 +161,35 @@ const resetPassword = async (req, res) => {
 };
 
 /**
+ * PUT /api/auth/change-password
+ * Body: { oldPassword, newPassword }
+ */
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    // Validation des données
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: 'Ancien et nouveau mot de passe requis' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+    }
+
+    if (oldPassword === newPassword) {
+      return res.status(400).json({ message: 'Le nouveau mot de passe doit être différent de l\'ancien' });
+    }
+
+    await authService.changePassword(oldPassword, newPassword);
+    res.json({ message: 'Mot de passe changé avec succès' });
+  } catch (error) {
+    console.error('Erreur lors du changement de mot de passe:', error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
  * GET /api/auth/profile
  */
 const getProfile = async (req, res) => {
@@ -226,6 +255,7 @@ module.exports = {
   refreshSession,
   requestPasswordReset,
   resetPassword,
+  changePassword,
   getProfile,
   updateProfile
 };

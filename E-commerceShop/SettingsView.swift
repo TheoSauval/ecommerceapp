@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var notificationsEnabled = true
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @State private var showingDeleteAlert = false
+    @State private var showingChangePassword = false
 
     var body: some View {
         Form {
@@ -15,8 +16,8 @@ struct SettingsView: View {
             }
 
             Section(header: Text("Sécurité")) {
-                NavigationLink("Changer le mot de passe") {
-                    Text("Fonctionnalité à venir...")
+                Button("Changer le mot de passe") {
+                    showingChangePassword = true
                 }
             }
 
@@ -29,6 +30,9 @@ struct SettingsView: View {
         }
         .navigationTitle("Paramètres")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingChangePassword) {
+            ChangePasswordView()
+        }
         .alert("Supprimer le compte", isPresented: $showingDeleteAlert) {
             Button("Supprimer", role: .destructive) {
                 userService.deleteAccount { result in
@@ -38,7 +42,7 @@ struct SettingsView: View {
                         authService.logout()
                     case .failure(let error):
                         // Gérer l'erreur, par exemple afficher une autre alerte
-                        print("Erreur de suppression: \\(error.localizedDescription)")
+                        print("Erreur de suppression: \(error.localizedDescription)")
                     }
                 }
             }

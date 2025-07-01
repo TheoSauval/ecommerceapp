@@ -128,7 +128,7 @@ struct OrderDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 // En-tête de la commande
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Commande #\(order.id)")
+                    Text("Commande #\(String(order.id.prefix(8)).uppercased())")
                         .font(.title2)
                         .fontWeight(.bold)
                     
