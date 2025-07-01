@@ -20,8 +20,8 @@ struct ProductDetailView: View {
 
     private var selectedVariant: ProductVariant? {
         variants.first { variant in
-            (selectedColor == nil || variant.color?.id == selectedColor?.id) &&
-            (selectedSize == nil || variant.height?.id == selectedSize?.id)
+            (selectedColor == nil || variant.colors?.id == selectedColor?.id) &&
+            (selectedSize == nil || variant.heights?.id == selectedSize?.id)
         } ?? variants.first
     }
 
@@ -81,7 +81,7 @@ struct ProductDetailView: View {
                         } else if !variants.isEmpty {
                             Divider()
                             // Color Selection
-                            let colors = variants.compactMap { $0.color }.removingDuplicates()
+                            let colors = variants.compactMap { $0.colors }.removingDuplicates()
                             if !colors.isEmpty {
                                 Text("Couleur").font(.headline)
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -102,7 +102,7 @@ struct ProductDetailView: View {
                             }
 
                             // Size Selection
-                            let sizes = variants.compactMap { $0.height }.removingDuplicates()
+                            let sizes = variants.compactMap { $0.heights }.removingDuplicates()
                             if !sizes.isEmpty {
                                 Text("Taille").font(.headline)
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -162,10 +162,10 @@ struct ProductDetailView: View {
         }
         .onChange(of: variants) { newVariants in
             if selectedColor == nil {
-                selectedColor = newVariants.first?.color
+                selectedColor = newVariants.first?.colors
             }
             if selectedSize == nil {
-                selectedSize = newVariants.first?.height
+                selectedSize = newVariants.first?.heights
             }
         }
     }

@@ -69,8 +69,9 @@ class CartService {
 
     // Mettre à jour un élément du panier
     async updateCartItem(cartItemId, userId, quantity) {
-        if (quantity <= 0) {
-            return this.removeFromCart(cartItemId, userId);
+        // Permettre une quantité de 0 (ne pas supprimer automatiquement)
+        if (quantity < 0) {
+            throw new Error('La quantité ne peut pas être négative.');
         }
 
         const { data, error } = await supabase

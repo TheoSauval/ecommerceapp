@@ -99,7 +99,7 @@ struct OrderConfirmationView: View {
                                 .fontWeight(.semibold)
                             
                             ForEach(orderVariants, id: \.order_id) { variant in
-                                OrderItemRow(variant: variant)
+                                OrderConfirmationItemRow(variant: variant)
                             }
                         }
                     }
@@ -179,7 +179,7 @@ struct OrderConfirmationView: View {
     }
 }
 
-struct OrderItemRow: View {
+struct OrderConfirmationItemRow: View {
     let variant: OrderVariant
     
     var body: some View {
@@ -190,14 +190,13 @@ struct OrderItemRow: View {
                 .frame(width: 50, height: 50)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(variant.product_variant?.product?.nom ?? "Produit inconnu")
+                Text(variant.product_variant?.products?.nom ?? "Produit inconnu")
                     .font(.headline)
                 
-                if let color = variant.product_variant?.color?.nom,
-                   let size = variant.product_variant?.height?.nom {
-                    Text("\(color) - \(size)")
+                if let color = variant.product_variant?.colors?.nom,
+                   let size = variant.product_variant?.heights?.nom {
+                    Text("Taille: \(size), Couleur: \(color)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
                 }
                 
                 Text("Quantité: \(variant.quantity)")

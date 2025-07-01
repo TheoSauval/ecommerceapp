@@ -40,17 +40,44 @@ class URLSchemeHandler: ObservableObject {
     private func parsePaymentResult(from url: URL) -> PaymentResult {
         let path = url.path
         let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let urlString = url.absoluteString
         
-        print("🔗 Path: \(path)")
-        print("🔗 Query items: \(queryItems)")
+        print("🔗 Analyse détaillée de l'URL:")
+        print("   Scheme: \(url.scheme ?? "nil")")
+        print("   Host: \(url.host ?? "nil")")
+        print("   Path: '\(path)'")
+        print("   Query items: \(queryItems)")
+        print("   URL complète: \(urlString)")
         
-        if path.contains("/payment/success") {
+        // Vérifier si l'URL contient un session_id (indicateur de succès)
+        let hasSessionId = queryItems.first(where: { $0.name == "session_id" }) != nil
+        print("   Contient session_id: \(hasSessionId)")
+        
+        // Logique de parsing améliorée
+        if hasSessionId {
             let sessionId = queryItems.first(where: { $0.name == "session_id" })?.value
+            print("✅ Paiement réussi détecté (présence de session_id), session ID: \(sessionId ?? "nil")")
             return .success(sessionId: sessionId)
-        } else if path.contains("/payment/cancel") {
+        }
+        
+        // Vérifier les mots-clés dans l'URL
+        let urlStringLower = urlString.lowercased()
+        let pathLower = path.lowercased()
+        
+        if urlStringLower.contains("success") || pathLower.contains("success") {
+            let sessionId = queryItems.first(where: { $0.name == "session_id" })?.value
+            print("✅ Paiement réussi détecté (mot-clé 'success'), session ID: \(sessionId ?? "nil")")
+            return .success(sessionId: sessionId)
+        } 
+        else if urlStringLower.contains("cancel") || pathLower.contains("cancel") {
+            print("❌ Paiement annulé détecté (mot-clé 'cancel')")
             return .cancelled
-        } else {
-            return .error("URL de retour inconnue")
+        }
+        else {
+            print("❌ URL de retour inconnue: \(urlString)")
+            print("   Path: '\(path)'")
+            print("   Query items: \(queryItems)")
+            return .error("URL de retour inconnue: \(urlString)")
         }
     }
     

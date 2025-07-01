@@ -4,6 +4,7 @@ const orderService = require('../services/orderService');
 exports.getOrders = async (req, res) => {
     try {
         const orders = await orderService.getOrders(req.user.id);
+        console.log('RETOUR API /api/orders :', JSON.stringify(orders, null, 2));
         res.json(orders);
     } catch (error) {
         res.status(500).json({ message: error.message });

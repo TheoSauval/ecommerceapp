@@ -8,6 +8,8 @@ class OrderService {
             .select(`
                 *,
                 order_variants (
+                    order_id,
+                    variant_id,
                     quantity,
                     unit_price,
                     product_variants (
@@ -41,6 +43,8 @@ class OrderService {
             .select(`
                 *,
                 order_variants (
+                    order_id,
+                    variant_id,
                     quantity,
                     unit_price,
                     product_variants (
@@ -185,6 +189,8 @@ class OrderService {
             .select(`
                 *,
                 order_variants (
+                    order_id,
+                    variant_id,
                     quantity,
                     unit_price,
                     product_variants (
@@ -216,6 +222,8 @@ class OrderService {
             .select(`
                 *,
                 order_variants (
+                    order_id,
+                    variant_id,
                     quantity,
                     unit_price,
                     product_variants (

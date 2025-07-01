@@ -15,6 +15,9 @@ router.post('/', cartController.addToCart);
 // PUT /api/cart/:itemId
 router.put('/:itemId', cartController.updateCartItem);
 
+// DELETE /api/cart/clear (DOIT être AVANT /:itemId)
+router.delete('/clear', cartController.clearCart);
+
 // DELETE /api/cart/:itemId
 router.delete('/:itemId', cartController.removeFromCart);
 

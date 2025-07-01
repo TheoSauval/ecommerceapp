@@ -49,6 +49,11 @@ struct CheckoutView: View {
                     urlSchemeHandler.resetPaymentResult()
                 }
             }
+            .onChange(of: paymentViewModel.paymentStatus) { newStatus in
+                if newStatus == .success {
+                    cartManager.clearCart()
+                }
+            }
             .sheet(isPresented: $showConfirmation) {
                 if let order = confirmedOrder {
                     OrderConfirmationView(order: order)

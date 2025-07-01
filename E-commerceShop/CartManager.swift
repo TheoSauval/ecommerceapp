@@ -18,7 +18,7 @@ class CartManager: ObservableObject {
     
     var totalPrice: Double {
         cartItems.reduce(0) { total, item in
-            guard let variant = item.variant, let product = variant.product else { return total }
+            guard let variant = item.variant, let product = variant.products else { return total }
             let price = variant.prix ?? product.prix_base
             return total + (price * Double(item.quantity))
         }
@@ -59,9 +59,10 @@ class CartManager: ObservableObject {
     }
     
     func updateQuantity(cartItemId: Int, newQuantity: Int) {
-        guard newQuantity > 0 else {
-            removeFromCart(cartItemId: cartItemId)
-            return
+        // Ne pas supprimer automatiquement si quantité = 0
+        // L'utilisateur doit explicitement supprimer l'article
+        guard newQuantity >= 0 else {
+            return // Ne rien faire si quantité négative
         }
         
         isLoading = true
@@ -72,7 +73,10 @@ class CartManager: ObservableObject {
                 self?.isLoading = false
                 switch result {
                 case .success:
+                    // Forcer un rafraîchissement complet du panier
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self?.fetchCart()
+                    }
                 case .failure(let error):
                     self?.errorMessage = "Erreur de mise à jour: \(error.localizedDescription)"
                 }
@@ -102,7 +106,10 @@ class CartManager: ObservableObject {
     }
     
     func decreaseQuantity(for item: CartItem) {
-        updateQuantity(cartItemId: item.id, newQuantity: item.quantity - 1)
+        let newQuantity = item.quantity - 1
+        if newQuantity >= 0 {
+            updateQuantity(cartItemId: item.id, newQuantity: newQuantity)
+        }
     }
     
     func clearCart() {

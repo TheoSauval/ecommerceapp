@@ -9,7 +9,7 @@ import Foundation
 
 class OrderService {
     static let shared = OrderService()
-    private let baseURL = "http://localhost:4000/api/orders"
+    private let baseURL = "\(APIConfig.baseURL)/api/orders"
     
     // On retire la gestion locale du token pour toujours utiliser AuthService
     
@@ -20,6 +20,7 @@ class OrderService {
         if let token = AuthService.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         return request
     }
     

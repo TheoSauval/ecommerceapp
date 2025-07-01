@@ -52,3 +52,14 @@ exports.removeFromCart = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }; 
+
+// DELETE /api/cart/clear
+exports.clearCart = async (req, res) => {
+    try {
+        const result = await cartService.clearCart(req.user.id);
+        res.json(result);
+    } catch (error) {
+        console.error('Error in clearCart:', error);
+        res.status(500).json({ message: error.message });
+    }
+}; 

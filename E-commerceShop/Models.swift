@@ -127,14 +127,12 @@ struct ProductVariant: Codable, Equatable, Identifiable, Hashable {
     let stock: Int
     let prix: Double?
     let actif: Bool
-    let product: Product?
-    let color: ProductColor?
-    let height: ProductSize?
+    let products: Product?
+    let colors: ProductColor?
+    let heights: ProductSize?
 
     enum CodingKeys: String, CodingKey {
-        case id, product_id, color_id, height_id, stock, prix, actif, product
-        case color = "colors"
-        case height = "heights"
+        case id, product_id, color_id, height_id, stock, prix, actif, products, colors, heights
     }
 }
 
@@ -166,9 +164,9 @@ struct CartItem: Codable, Identifiable, Equatable {
     let updated_at: String
     let product_variant: ProductVariant?
     
-    // Convenience accessors
+    // Convenience accessors - mis à jour pour correspondre à la nouvelle structure
     var variant: ProductVariant? { product_variant }
-    var product: Product? { product_variant?.product }
+    var product: Product? { product_variant?.products }  // Changé de 'product' à 'products'
 }
 
 // MARK: - Order Models

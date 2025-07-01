@@ -20,8 +20,14 @@ enum APIError: Error {
 class APIConfig {
     static let shared = APIConfig() // Instance partagée (Singleton)
     
-    // Rendre baseURL accessible statiquement depuis d'autres services
-    static let baseURL = "http://localhost:4000"
+    // Configuration pour différents environnements
+    #if DEBUG
+    // En développement : utiliser ngrok pour tester sur iPhone
+    static let baseURL = "https://crane-concrete-coyote.ngrok-free.app"
+    #else
+    // En production : utiliser votre serveur déployé
+    static let baseURL = "https://votre-serveur-production.com"
+    #endif
     
     private var authToken: String? {
         // Récupère le token depuis AuthService pour être toujours à jour

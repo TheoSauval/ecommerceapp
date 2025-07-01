@@ -77,31 +77,38 @@ class PaymentViewModel: ObservableObject {
         paymentService.openStripeCheckout(url: url)
     }
     
-    /// Vérifie le statut du paiement
-    func checkPaymentStatus() {
+    /// Vérifie le statut du paiement avec retry
+    func checkPaymentStatus(retryCount: Int = 0) {
         guard let orderId = currentOrderId else { return }
-        
         paymentStatus = .processing
         
         paymentService.getStripePaymentStatus(orderId: orderId) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let status):
-                    switch status.status {
-                    case "succeeded":
+                    // Accepte "succeeded" ou "Payé" (backend)
+                    if status.status == "succeeded" || status.status == "Payé" {
                         self?.paymentStatus = .success
-                    case "requires_payment_method", "requires_confirmation", "requires_action":
-                        self?.paymentStatus = .processing
-                    case "canceled", "failed":
+                        self?.errorMessage = nil
+                        // (Le panier sera vidé dans la vue CheckoutView)
+                    } else if retryCount < 3 {
+                        // Réessayer après 2 secondes
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self?.checkPaymentStatus(retryCount: retryCount + 1)
+                        }
+                    } else {
                         self?.paymentStatus = .failed
-                        self?.errorMessage = "Le paiement a échoué"
-                    default:
-                        self?.paymentStatus = .processing
+                        self?.errorMessage = "Le paiement n'a pas pu être confirmé. Merci de vérifier votre historique ou de réessayer. (Statut: \(status.status))"
                     }
-                    
                 case .failure(let error):
+                    if retryCount < 3 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self?.checkPaymentStatus(retryCount: retryCount + 1)
+                        }
+                    } else {
                     self?.paymentStatus = .failed
                     self?.errorMessage = "Erreur lors de la vérification du statut: \(error.localizedDescription)"
+                    }
                 }
             }
         }
@@ -134,6 +141,7 @@ class PaymentViewModel: ObservableObject {
                 case .success(let sessionId):
                     print("✅ Paiement réussi, session ID: \(sessionId ?? "nil")")
                     paymentStatus = .success
+                    errorMessage = nil
                     
                     // Vérifier le statut du paiement après un délai
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -147,12 +155,21 @@ class PaymentViewModel: ObservableObject {
                     
                 case .error(let error):
                     print("❌ Erreur de paiement: \(error)")
-                    paymentStatus = .failed
-                    errorMessage = "Erreur lors du paiement: \(error)"
+                    // Même en cas d'erreur de parsing, vérifier le statut du paiement
+                    // car le paiement peut avoir réussi côté serveur
+                    paymentStatus = .processing
+                    errorMessage = "Vérification du statut du paiement..."
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        self.checkPaymentStatus()
+                    }
                 }
             } else {
                 // Fallback si le résultat n'est pas disponible
                 print("⚠️ Résultat de paiement non disponible, vérification du statut...")
+                paymentStatus = .processing
+                errorMessage = "Vérification du statut du paiement..."
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     self.checkPaymentStatus()
                 }
