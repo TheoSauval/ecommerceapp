@@ -229,6 +229,27 @@ class ProductService {
         if (error) throw error;
         return data;
     }
+
+    // Récupérer les variantes d'un produit qui ont des commandes associées
+    async getVariantsWithOrders(productId) {
+        // D'abord, récupérer les IDs des variantes du produit
+        const { data: variantIds, error: variantsError } = await supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', productId);
+
+        if (variantsError) throw variantsError;
+        if (!variantIds || variantIds.length === 0) return [];
+
+        // Ensuite, vérifier quelles variantes ont des commandes
+        const { data: ordersData, error: ordersError } = await supabase
+            .from('order_variants')
+            .select('variant_id')
+            .in('variant_id', variantIds.map(v => v.id));
+
+        if (ordersError) throw ordersError;
+        return ordersData || [];
+    }
 }
 
 module.exports = new ProductService(); 

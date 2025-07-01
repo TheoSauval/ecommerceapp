@@ -235,14 +235,9 @@ class PaymentService {
                 
                 console.log(`✅ Statut de la commande ${orderId} mis à jour vers 'Payé'`);
                     
-                // 2. Décrémenter le stock
-                const { error: stockError } = await supabase.rpc('decrease_stock', { order_id_param: orderId });
-
-                if (stockError) {
-                    console.error(`❌ Erreur lors de la décrémentation du stock pour la commande ${orderId}:`, stockError);
-                } else {
-                    console.log(`✅ Stock décrémenté pour la commande ${orderId}`);
-                }
+                // 2. Le stock a déjà été décrémenté lors de la création de la commande
+                // Pas besoin de le décrémenter à nouveau ici
+                console.log(`✅ Stock déjà réservé lors de la création de la commande ${orderId}`);
 
                 // 3. Créer un enregistrement de paiement
                 const paymentData = {

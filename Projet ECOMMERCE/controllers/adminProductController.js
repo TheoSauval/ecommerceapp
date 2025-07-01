@@ -101,21 +101,77 @@ exports.updateProduct = async (req, res) => {
 
         // Mettre à jour les variantes si fournies
         if (variants && Array.isArray(variants)) {
-            // Supprimer toutes les variantes existantes
+            // Récupérer les variantes existantes
             const existingVariants = await productService.getProductVariants(req.params.id);
-            for (const variant of existingVariants) {
-                await productService.deleteProductVariant(variant.id);
+            
+            // Vérifier quelles variantes ont des commandes associées
+            const variantsWithOrders = await productService.getVariantsWithOrders(req.params.id);
+            const variantsWithOrdersIds = new Set(variantsWithOrders.map(v => v.variant_id));
+            
+            console.log('🔍 Variantes avec commandes:', Array.from(variantsWithOrdersIds));
+            
+            // Traiter chaque variante existante
+            for (const existingVariant of existingVariants) {
+                const hasOrders = variantsWithOrdersIds.has(existingVariant.id);
+                
+                // Chercher si cette variante existe dans les nouvelles données
+                const matchingNewVariant = variants.find(v => 
+                    v.color_id === existingVariant.color_id && 
+                    v.height_id === existingVariant.height_id
+                );
+                
+                if (matchingNewVariant) {
+                    // Variante trouvée dans les nouvelles données - mise à jour
+                    if (hasOrders) {
+                        // Si la variante a des commandes, on ne met à jour que le stock et le prix
+                        console.log(`📦 Mise à jour sécurisée de la variante ${existingVariant.id} (avec commandes)`);
+                        await productService.updateProductVariant(existingVariant.id, {
+                            stock: matchingNewVariant.stock || 0,
+                            prix: matchingNewVariant.prix || null
+                        });
+                    } else {
+                        // Si pas de commandes, on peut tout mettre à jour
+                        console.log(`🔄 Mise à jour complète de la variante ${existingVariant.id} (sans commandes)`);
+                        await productService.updateProductVariant(existingVariant.id, {
+                            color_id: matchingNewVariant.color_id,
+                            height_id: matchingNewVariant.height_id,
+                            stock: matchingNewVariant.stock || 0,
+                            prix: matchingNewVariant.prix || null
+                        });
+                    }
+                } else {
+                    // Variante non trouvée dans les nouvelles données
+                    if (hasOrders) {
+                        // Si la variante a des commandes, on la désactive au lieu de la supprimer
+                        console.log(`⚠️ Désactivation de la variante ${existingVariant.id} (avec commandes - préservation)`);
+                        await productService.updateProductVariant(existingVariant.id, {
+                            actif: false
+                        });
+                    } else {
+                        // Si pas de commandes, on peut la supprimer
+                        console.log(`🗑️ Suppression de la variante ${existingVariant.id} (sans commandes)`);
+                        await productService.deleteProductVariant(existingVariant.id);
+                    }
+                }
             }
-
-            // Créer les nouvelles variantes
-            for (const variant of variants) {
-                await productService.createProductVariant({
-                    product_id: req.params.id,
-                    color_id: variant.color_id,
-                    height_id: variant.height_id,
-                    stock: variant.stock || 0,
-                    prix: variant.prix || null
-                });
+            
+            // Créer les nouvelles variantes qui n'existent pas encore
+            for (const newVariant of variants) {
+                const variantExists = existingVariants.some(v => 
+                    v.color_id === newVariant.color_id && 
+                    v.height_id === newVariant.height_id
+                );
+                
+                if (!variantExists) {
+                    console.log(`➕ Création de la nouvelle variante: ${newVariant.color_id}-${newVariant.height_id}`);
+                    await productService.createProductVariant({
+                        product_id: req.params.id,
+                        color_id: newVariant.color_id,
+                        height_id: newVariant.height_id,
+                        stock: newVariant.stock || 0,
+                        prix: newVariant.prix || null
+                    });
+                }
             }
         }
 
@@ -123,6 +179,7 @@ exports.updateProduct = async (req, res) => {
         const productWithVariants = await productService.getProductById(req.params.id);
         res.json(productWithVariants);
     } catch (error) {
+        console.error('❌ Erreur lors de la mise à jour du produit:', error);
         res.status(500).json({ message: error.message });
     }
 };

@@ -39,12 +39,18 @@ exports.createOrder = async (req, res) => {
     }
 };
 
-// PUT /api/orders/:id/cancel
+// POST /api/orders/:id/cancel
 exports.cancelOrder = async (req, res) => {
+    console.log('🚫 POST /api/orders/:id/cancel appelé');
+    console.log('   - Order ID:', req.params.id);
+    console.log('   - User ID:', req.user.id);
+    
     try {
         const order = await orderService.cancelOrder(req.params.id, req.user.id);
+        console.log('✅ Commande annulée avec succès:', order.id);
         res.json(order);
     } catch (error) {
+        console.error('❌ Erreur lors de l\'annulation:', error.message);
         res.status(500).json({ message: error.message });
     }
 }; 

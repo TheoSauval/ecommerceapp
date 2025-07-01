@@ -15,7 +15,7 @@ router.post('/', orderController.createOrder);
 // GET /api/orders/:id
 router.get('/:id', orderController.getOrderById);
 
-// PUT /api/orders/:id/cancel
-router.put('/:id/cancel', orderController.cancelOrder);
+// POST /api/orders/:id/cancel
+router.post('/:id/cancel', orderController.cancelOrder);
 
 module.exports = router; 

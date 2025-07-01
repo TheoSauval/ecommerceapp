@@ -52,11 +52,19 @@ app.use('/api/cart', cartRoutes);
 const orderRoutes = require('./routes/orders');
 app.use('/api/orders', orderRoutes);
 
+// Démarrer le nettoyage automatique des commandes orphelines
+const orderService = require('./services/orderService');
+orderService.startAutoCleanup();
+
 const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', paymentRoutes);
 
 const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
+
+// Routes de recommandations
+const recommendationRoutes = require('./routes/recommendations');
+app.use('/api/recommendations', recommendationRoutes);
 
 // Routes d'analyses vendeur
 const vendorAnalyticsRoutes = require('./routes/vendorAnalytics');
