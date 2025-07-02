@@ -35,6 +35,12 @@ struct ProfileView: View {
                             Text("Support")
                         }
                     }
+                    NavigationLink(destination: PrivacyPolicyView()) {
+                        HStack {
+                            Image(systemName: "hand.raised")
+                            Text("Politique de Confidentialité")
+                        }
+                    }
                 }
 
                 Section {
