@@ -194,12 +194,17 @@ struct Order: Codable, Identifiable {
     let order_variants: [OrderVariant]?
 }
 
-struct OrderVariant: Codable {
+struct OrderVariant: Codable, Identifiable {
     let order_id: String // Changé de Int à String pour supporter les UUIDs
     let variant_id: Int
     let quantity: Int
     let unit_price: Double
     let product_variant: ProductVariant?
+    
+    // Identifiant unique pour SwiftUI
+    var id: String {
+        return "\(order_id)_\(variant_id)"
+    }
 }
 
 struct OrderRequest: Codable {
@@ -247,6 +252,103 @@ struct Notification: Codable, Identifiable {
     let type: String
     let created_at: String
     let updated_at: String
+}
+
+// MARK: - Recommendation Models
+
+struct Recommendation: Codable, Identifiable {
+    let product_id: Int
+    let nom: String
+    let prix_base: Double
+    let description: String?
+    let categorie: String?
+    let marque: String?
+    let images: [String]?
+    let score_recommendation: Double
+    
+    // Computed properties pour compatibilité avec Product
+    var id: Int { product_id }
+    var name: String { nom }
+    var prix: Double { prix_base }
+    var imageName: String {
+        if let images = images, !images.isEmpty, let url = images.first {
+            return url
+        }
+        return "default_product"
+    }
+    var rating: Double { 5.0 }
+}
+
+struct HistoryItem: Codable, Identifiable {
+    let id: Int
+    let user_id: String
+    let product_id: Int
+    let viewed_at: String
+    let view_duration: Int
+    let created_at: String
+    let products: Product?
+}
+
+struct ProductStats: Codable {
+    let totalViews: Int
+    let uniqueUsers: Int
+    let totalDuration: Int
+    let avgDuration: Double
+    let recentViews: Int
+}
+
+struct CategoryPreference: Codable {
+    let categorie: String
+    let totalViews: Int
+    let totalDuration: Int
+    let avgDuration: Double
+    let categoryScore: Double
+    
+    enum CodingKeys: String, CodingKey {
+        case categorie
+        case totalViews = "total_views"
+        case totalDuration = "total_duration"
+        case avgDuration = "avg_duration"
+        case categoryScore = "category_score"
+    }
+}
+
+struct UserAnalytics: Codable {
+    let totalViews: Int
+    let totalDuration: Int
+    let favoriteCategory: String?
+    let favoriteProductId: Int?
+    let avgSessionDuration: Double
+    
+    enum CodingKeys: String, CodingKey {
+        case totalViews = "total_views"
+        case totalDuration = "total_duration"
+        case favoriteCategory = "favorite_category"
+        case favoriteProductId = "favorite_product_id"
+        case avgSessionDuration = "avg_session_duration"
+    }
+}
+
+struct PopularProduct: Codable, Identifiable {
+    let id: Int
+    let nom: String
+    let prix_base: Double
+    let description: String?
+    let categorie: String?
+    let marque: String?
+    let images: [String]?
+    let viewCount: Int
+    
+    // Computed properties pour compatibilité avec Product
+    var name: String { nom }
+    var prix: Double { prix_base }
+    var imageName: String {
+        if let images = images, !images.isEmpty, let url = images.first {
+            return url
+        }
+        return "default_product"
+    }
+    var rating: Double { 5.0 }
 }
 
 // MARK: - Category Filter
@@ -314,4 +416,10 @@ struct OrderRequestBackend: Codable {
     let items: [OrderItemBackend]
     let adresse_livraison: String
     let methode_paiement: String
+}
+
+// MARK: - Error Response Model
+
+struct ServerErrorResponse: Codable {
+    let message: String
 } 

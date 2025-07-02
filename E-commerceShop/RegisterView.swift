@@ -35,6 +35,20 @@ struct RegisterView: View {
                         .foregroundColor(.red)
                 }
 
+                // Message RGPD
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Protection des données")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text("En vous inscrivant, vous acceptez que vos données soient stockées dans notre base de données conformément à notre politique de confidentialité et au Règlement Général sur la Protection des Données (RGPD).")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 4)
+
                 Button(action: {
                     guard let ageInt = Int(age) else {
                         // Gérer l'erreur si l'âge n'est pas un nombre valide

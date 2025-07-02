@@ -2,16 +2,25 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var recommendationViewModel: RecommendationViewModel
     @State private var searchText = ""
     @State private var selectedCategory: String? = nil
 
     let columns = [GridItem(.adaptive(minimum: 160))]
 
-    // Liste des catégories à filtrer (à adapter selon tes besoins réels)
-    let categories = ["Tous", "T-Shirt", "Sweat", "Manteau"]
+    // Liste des catégories à filtrer avec recommandations
+    let categories = ["Tous", "Recommandations", "T-Shirt", "Sweat", "Manteau"]
 
     var filteredProducts: [Product] {
-        productViewModel.products.filter { product in
+        // Si "Recommandations" est sélectionné, utiliser les recommandations
+        if selectedCategory == "Recommandations" {
+            return recommendationViewModel.recommendationProducts.filter { product in
+                searchText.isEmpty || product.name.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        // Sinon, filtrer les produits normaux
+        return productViewModel.products.filter { product in
             let matchSearch = searchText.isEmpty || product.name.localizedCaseInsensitiveContains(searchText)
             let matchCategory = (selectedCategory == nil || selectedCategory == "Tous") || (product.categorie?.localizedCaseInsensitiveContains(selectedCategory ?? "") ?? false)
             return matchSearch && matchCategory
@@ -55,6 +64,18 @@ struct HomeView: View {
                             productViewModel.fetchProducts()
                         }
                     }
+                } else if selectedCategory == "Recommandations" && recommendationViewModel.isLoading {
+                    Spacer()
+                    ProgressView("Chargement des recommandations...")
+                    Spacer()
+                } else if selectedCategory == "Recommandations" && recommendationViewModel.errorMessage != nil {
+                    VStack {
+                        Text("Erreur de chargement des recommandations")
+                        Text(recommendationViewModel.errorMessage!).foregroundColor(.gray)
+                        Button("Réessayer") {
+                            recommendationViewModel.fetchRecommendations()
+                        }
+                    }
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
@@ -71,6 +92,11 @@ struct HomeView: View {
                 if productViewModel.products.isEmpty {
                     productViewModel.fetchProducts()
                 }
+                
+                // Charger les recommandations si l'utilisateur est connecté
+                if recommendationViewModel.recommendations.isEmpty {
+                    recommendationViewModel.fetchRecommendations()
+                }
             }
         }
     }
@@ -80,6 +106,7 @@ struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
         HomeView()
             .environmentObject(ProductViewModel())
+            .environmentObject(RecommendationViewModel())
             .environmentObject(CartManager())
             .environmentObject(FavoritesManager())
     }

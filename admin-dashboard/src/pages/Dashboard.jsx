@@ -215,6 +215,10 @@ const Dashboard = () => {
                               label={`€${product.total_revenue.toFixed(2)}`} 
                               color="primary" 
                               size="small"
+                              clickable={false}
+                              onClick={undefined}
+                              onDelete={undefined}
+                              sx={{ ml: 1, pointerEvents: 'none' }}
                             />
                           </TableCell>
                         </TableRow>

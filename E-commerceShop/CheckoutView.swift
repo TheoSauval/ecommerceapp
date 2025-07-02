@@ -31,6 +31,8 @@ struct CheckoutView: View {
                     successView
                 case .failed:
                     failedView
+                case .cancelled:
+                    cancelledView
                 }
             }
             .padding()
@@ -40,6 +42,9 @@ struct CheckoutView: View {
                 // Réinitialiser l'état si nécessaire
                 if paymentViewModel.paymentStatus == .idle {
                     paymentViewModel.resetPaymentState()
+                } else {
+                    // Restaurer l'état du paiement si on revient sur la page
+                    paymentViewModel.restorePaymentState()
                 }
             }
             .onReceive(urlSchemeHandler.$shouldCheckPaymentStatus) { shouldCheck in
@@ -52,7 +57,15 @@ struct CheckoutView: View {
             .onChange(of: paymentViewModel.paymentStatus) { newStatus in
                 if newStatus == .success {
                     cartManager.clearCart()
+                } else if newStatus == .failed || newStatus == .cancelled {
+                    // En cas d'échec ou d'annulation, la commande sera automatiquement annulée
+                    // Le stock sera restauré
                 }
+            }
+            .onDisappear {
+                // Ne pas annuler automatiquement la commande quand l'utilisateur navigue
+                // L'annulation se fera uniquement via le timeout ou manuellement
+                print("📱 CheckoutView disparaît - Statut: \(paymentViewModel.paymentStatus)")
             }
             .sheet(isPresented: $showConfirmation) {
                 if let order = confirmedOrder {
@@ -258,5 +271,60 @@ struct CheckoutView: View {
             adresse_livraison: "Adresse par défaut", // À améliorer avec un formulaire
             methode_paiement: "Stripe"
         )
+    }
+    
+    private var cancelledView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "xmark.circle.fill")
+                .resizable()
+                .frame(width: 80, height: 80)
+                .foregroundStyle(.orange)
+            
+            Text("Paiement annulé")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            if let errorMessage = paymentViewModel.errorMessage {
+                Text(errorMessage)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+            }
+            
+            VStack(spacing: 12) {
+                Button("Réessayer") {
+                    paymentViewModel.resetPaymentState()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                
+                Button("Retour au panier") {
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.gray.opacity(0.2))
+                .foregroundColor(.primary)
+                .cornerRadius(10)
+            }
+        }
+    }
+    
+    private func cancelPendingOrder() {
+        guard let orderId = paymentViewModel.currentOrderId else { return }
+        
+        print("🔄 Annulation de la commande en attente: \(orderId)")
+        OrderService.shared.cancelOrder(orderId: orderId) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    print("✅ Commande annulée et stock restauré")
+                case .failure(let error):
+                    print("❌ Erreur lors de l'annulation de la commande: \(error)")
+                }
+            }
+        }
     }
 }

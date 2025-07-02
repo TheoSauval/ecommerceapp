@@ -177,10 +177,15 @@ class PaymentService {
                 return
             }
             
+            // Debug: Afficher la réponse brute
+            print("📊 Réponse brute du statut de paiement:", String(data: data, encoding: .utf8) ?? "nil")
+            
             do {
                 let status = try JSONDecoder().decode(StripePaymentStatus.self, from: data)
                 completion(.success(status))
             } catch {
+                print("❌ Erreur de décodage StripePaymentStatus:", error)
+                print("📄 Données reçues:", String(data: data, encoding: .utf8) ?? "nil")
                 completion(.failure(error))
             }
         }.resume()
@@ -221,4 +226,45 @@ struct StripePaymentStatus: Codable {
     let status: String
     let amount: Double?
     let currency: String?
+    
+    // Support pour différents formats de réponse
+    enum CodingKeys: String, CodingKey {
+        case status
+        case amount
+        case currency
+        case orderStatus = "order_status"
+        case paymentStatus = "payment_status"
+    }
+    
+    // Initialiseur par défaut pour la conformité Codable
+    init(status: String, amount: Double? = nil, currency: String? = nil) {
+        self.status = status
+        self.amount = amount
+        self.currency = currency
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Essayer différents noms de champs pour le statut
+        if let status = try? container.decode(String.self, forKey: .status) {
+            self.status = status
+        } else if let orderStatus = try? container.decode(String.self, forKey: .orderStatus) {
+            self.status = orderStatus
+        } else if let paymentStatus = try? container.decode(String.self, forKey: .paymentStatus) {
+            self.status = paymentStatus
+        } else {
+            self.status = "unknown"
+        }
+        
+        self.amount = try? container.decode(Double.self, forKey: .amount)
+        self.currency = try? container.decode(String.self, forKey: .currency)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(amount, forKey: .amount)
+        try container.encodeIfPresent(currency, forKey: .currency)
+    }
 }

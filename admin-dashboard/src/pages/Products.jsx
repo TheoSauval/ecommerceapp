@@ -59,6 +59,7 @@ function Products() {
     images: [],
     variants: []
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchProducts();
@@ -121,6 +122,7 @@ function Products() {
         variants: []
       });
       setPreviewImages([]);
+      setErrors({});
     }
     setSelectedFiles([]);
     setOpen(true);
@@ -131,6 +133,7 @@ function Products() {
     setEditingProduct(null);
     setSelectedFiles([]);
     setPreviewImages([]);
+    setErrors({});
   };
 
   const handleChange = (e) => {
@@ -138,6 +141,13 @@ function Products() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    // Effacer l'erreur pour ce champ
+    if (errors[e.target.name]) {
+      setErrors(prev => ({
+        ...prev,
+        [e.target.name]: ''
+      }));
+    }
   };
 
   const handleFileSelect = (event) => {
@@ -164,8 +174,16 @@ function Products() {
   const addVariant = () => {
     setFormData(prev => ({
       ...prev,
-      variants: [...prev.variants, { color_id: '', height_id: '', stock: 0, prix: '' }]
+      variants: [...prev.variants, { color_id: '', height_id: '', stock: 0, prix: null }]
     }));
+    
+    // Effacer l'erreur générale des variantes si elle existe
+    if (errors.variants) {
+      setErrors(prev => ({
+        ...prev,
+        variants: ''
+      }));
+    }
   };
 
   const removeVariant = (index) => {
@@ -182,6 +200,16 @@ function Products() {
         i === index ? { ...variant, [field]: value } : variant
       )
     }));
+    
+    // Effacer les erreurs de variantes
+    if (errors.variantDetails && errors.variantDetails[index]) {
+      setErrors(prev => ({
+        ...prev,
+        variantDetails: prev.variantDetails.map((variantError, i) => 
+          i === index ? { ...variantError, [field]: '' } : variantError
+        )
+      }));
+    }
   };
 
   const uploadImages = async () => {
@@ -209,8 +237,77 @@ function Products() {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validation des champs obligatoires
+    if (!formData.nom.trim()) {
+      newErrors.nom = 'Le nom du produit est obligatoire';
+    }
+    if (!formData.description.trim()) {
+      newErrors.description = 'La description est obligatoire';
+    }
+    if (!formData.prix_base || formData.prix_base <= 0) {
+      newErrors.prix_base = 'Le prix de base doit être supérieur à 0';
+    }
+    
+    // Validation des variantes
+    if (!formData.variants || formData.variants.length === 0) {
+      newErrors.variants = 'Au moins une variante est obligatoire';
+    } else {
+      const variantErrors = [];
+      let hasValidVariant = false;
+      
+      formData.variants.forEach((variant, index) => {
+        const variantError = {};
+        let isValid = true;
+        
+        if (!variant.color_id) {
+          variantError.color_id = 'La couleur est obligatoire';
+          isValid = false;
+        }
+        if (!variant.height_id) {
+          variantError.height_id = 'La taille est obligatoire';
+          isValid = false;
+        }
+        if (variant.stock === undefined || variant.stock < 0) {
+          variantError.stock = 'Le stock doit être supérieur ou égal à 0';
+          isValid = false;
+        }
+        if (variant.prix !== null && variant.prix !== undefined && variant.prix <= 0) {
+          variantError.prix = 'Le prix de la variante doit être supérieur à 0';
+          isValid = false;
+        }
+        
+        if (isValid) {
+          hasValidVariant = true;
+        }
+        
+        variantErrors.push(variantError);
+      });
+      
+      if (!hasValidVariant) {
+        newErrors.variants = 'Au moins une variante complète est obligatoire';
+      } else {
+        // Ne pas ajouter variantDetails s'il n'y a pas d'erreurs
+        const hasVariantErrors = variantErrors.some(error => Object.keys(error).length > 0);
+        if (hasVariantErrors) {
+          newErrors.variantDetails = variantErrors;
+        }
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
       setLoading(true);
       
@@ -388,6 +485,8 @@ function Products() {
                   onChange={handleChange}
                   margin="normal"
                   required
+                  error={!!errors.nom}
+                  helperText={errors.nom}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -400,6 +499,8 @@ function Products() {
                   onChange={handleChange}
                   margin="normal"
                   required
+                  error={!!errors.prix_base}
+                  helperText={errors.prix_base}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -412,6 +513,9 @@ function Products() {
                   margin="normal"
                   multiline
                   rows={4}
+                  required
+                  error={!!errors.description}
+                  helperText={errors.description}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -485,23 +589,29 @@ function Products() {
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                   <Typography variant="h6" sx={{ color: 'text.primary' }}>
-                    Variantes (Couleur + Taille + Stock)
+                    Variantes (Couleur + Taille + Stock) *
                   </Typography>
                   <Button onClick={addVariant} variant="outlined" size="small">
                     Ajouter une variante
                   </Button>
                 </Box>
                 
+                {errors.variants && (
+                  <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+                    {errors.variants}
+                  </Typography>
+                )}
+                
                 {formData.variants.map((variant, index) => (
                   <Card key={index} sx={{ mt: 1, p: 2, background: darkMode ? '#1a1a1a' : '#f8f9fa' }}>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={12} md={3}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>Couleur</InputLabel>
+                        <FormControl fullWidth size="small" error={!!errors.variantDetails?.[index]?.color_id}>
+                          <InputLabel>Couleur *</InputLabel>
                           <Select
                             value={variant.color_id}
                             onChange={(e) => updateVariant(index, 'color_id', e.target.value)}
-                            label="Couleur"
+                            label="Couleur *"
                           >
                             {colors.map((color) => (
                               <MenuItem key={color.id} value={color.id}>
@@ -509,15 +619,20 @@ function Products() {
                               </MenuItem>
                             ))}
                           </Select>
+                          {errors.variantDetails?.[index]?.color_id && (
+                            <Typography color="error" variant="caption" sx={{ mt: 0.5 }}>
+                              {errors.variantDetails[index].color_id}
+                            </Typography>
+                          )}
                         </FormControl>
                       </Grid>
                       <Grid item xs={12} md={3}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>Taille</InputLabel>
+                        <FormControl fullWidth size="small" error={!!errors.variantDetails?.[index]?.height_id}>
+                          <InputLabel>Taille *</InputLabel>
                           <Select
                             value={variant.height_id}
                             onChange={(e) => updateVariant(index, 'height_id', e.target.value)}
-                            label="Taille"
+                            label="Taille *"
                           >
                             {heights.map((height) => (
                               <MenuItem key={height.id} value={height.id}>
@@ -525,26 +640,35 @@ function Products() {
                               </MenuItem>
                             ))}
                           </Select>
+                          {errors.variantDetails?.[index]?.height_id && (
+                            <Typography color="error" variant="caption" sx={{ mt: 0.5 }}>
+                              {errors.variantDetails[index].height_id}
+                            </Typography>
+                          )}
                         </FormControl>
                       </Grid>
                       <Grid item xs={12} md={2}>
                         <TextField
                           fullWidth
-                          label="Stock"
+                          label="Stock *"
                           type="number"
                           size="small"
                           value={variant.stock}
                           onChange={(e) => updateVariant(index, 'stock', Number(e.target.value))}
+                          error={!!errors.variantDetails?.[index]?.stock}
+                          helperText={errors.variantDetails?.[index]?.stock}
                         />
                       </Grid>
                       <Grid item xs={12} md={2}>
                         <TextField
                           fullWidth
-                          label="Prix (optionnel)"
+                          label="Prix spécifique"
                           type="number"
                           size="small"
-                          value={variant.prix}
+                          value={variant.prix || ''}
                           onChange={(e) => updateVariant(index, 'prix', e.target.value ? Number(e.target.value) : null)}
+                          error={!!errors.variantDetails?.[index]?.prix}
+                          helperText={errors.variantDetails?.[index]?.prix || 'Laissez vide pour utiliser le prix de base'}
                         />
                       </Grid>
                       <Grid item xs={12} md={2}>

@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Orders from './pages/Orders';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -34,6 +35,7 @@ const App = () => {
           >
             <Route index element={<Dashboard />} />
             <Route path="products" element={<Products />} />
+            <Route path="orders" element={<Orders />} />
           </Route>
         </Routes>
       </Router>

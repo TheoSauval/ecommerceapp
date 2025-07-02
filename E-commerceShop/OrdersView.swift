@@ -162,7 +162,7 @@ struct OrderDetailView: View {
                             .font(.headline)
                             .fontWeight(.semibold)
                         
-                        ForEach(orderVariants, id: \.order_id) { variant in
+                        ForEach(orderVariants) { variant in
                             OrderItemRow(variant: variant)
                         }
                     }

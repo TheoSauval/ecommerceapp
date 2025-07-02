@@ -1,3 +1,10 @@
+//
+//  URLSchemeHandler.swift
+//  E-commerceShop
+//
+//  Created by Théo Sauval on 05/06/2025.
+//
+
 import Foundation
 import SwiftUI
 
@@ -5,8 +12,21 @@ class URLSchemeHandler: ObservableObject {
     static let shared = URLSchemeHandler()
     @Published var shouldCheckPaymentStatus = false
     @Published var paymentResult: PaymentResult?
+    private var lastProcessedURL: String?
     
-    private init() {}
+    private init() {
+        // Écouter les notifications de retour de Stripe
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleStripeReturn(_:)),
+            name: Foundation.Notification.Name.stripeReturn,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
     
     enum PaymentResult {
         case success(sessionId: String?)
@@ -21,10 +41,23 @@ class URLSchemeHandler: ObservableObject {
         if url.scheme == "ecommerceshop" {
             print("🔗 URL scheme ecommerceshop détectée")
             
+            // Éviter les notifications multiples pour la même URL
+            if let lastProcessedURL = self.lastProcessedURL, lastProcessedURL == url.absoluteString {
+                print("⚠️ URL déjà traitée, ignorée: \(url.absoluteString)")
+                return
+            }
+            
+            // Marquer immédiatement cette URL comme traitée pour éviter les boucles
+            self.lastProcessedURL = url.absoluteString
+            
             // Analyser l'URL pour déterminer le résultat
             let result = parsePaymentResult(from: url)
-            self.paymentResult = result
-            self.shouldCheckPaymentStatus = true
+            
+            // Mettre à jour l'état de manière thread-safe
+            Task { @MainActor in
+                self.paymentResult = result
+                self.shouldCheckPaymentStatus = true
+            }
             
             // Notifier que l'utilisateur est revenu de Stripe
             NotificationCenter.default.post(
@@ -82,12 +115,22 @@ class URLSchemeHandler: ObservableObject {
     }
     
     func resetPaymentResult() {
-        paymentResult = nil
         shouldCheckPaymentStatus = false
+        paymentResult = nil
+        lastProcessedURL = nil
     }
+    
+    @objc private func handleStripeReturn(_ notification: Foundation.Notification) {
+        // Cette méthode n'est plus nécessaire car handleURL traite déjà les URLs
+        // Garder pour compatibilité mais ne rien faire
+        print("🔗 handleStripeReturn appelé mais ignoré (traitement déjà fait par handleURL)")
+    }
+    
+    // Méthode supprimée car redondante avec parsePaymentResult
 }
 
 // MARK: - Extension globale pour Notification.Name (Foundation)
 extension Foundation.Notification.Name {
     static let stripeReturn = Foundation.Notification.Name("stripeReturn")
+    static let stripeCancelled = Foundation.Notification.Name("stripeCancelled")
 }

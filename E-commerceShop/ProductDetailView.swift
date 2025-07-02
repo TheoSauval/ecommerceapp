@@ -5,6 +5,7 @@ struct ProductDetailView: View {
     @EnvironmentObject var cartManager: CartManager
     @EnvironmentObject var favoritesManager: FavoritesManager
     @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var recommendationViewModel: RecommendationViewModel
     @Environment(\.colorScheme) var colorScheme
 
     // State for variant selection
@@ -24,6 +25,24 @@ struct ProductDetailView: View {
             (selectedColor == nil || variant.colors?.id == selectedColor?.id) &&
             (selectedSize == nil || variant.heights?.id == selectedSize?.id)
         } ?? variants.first
+    }
+    
+    // Computed property pour obtenir les tailles disponibles pour la couleur sélectionnée
+    private var availableSizesForSelectedColor: [ProductSize] {
+        guard let selectedColor = selectedColor else {
+            // Si aucune couleur n'est sélectionnée, retourner toutes les tailles
+            return variants.compactMap { $0.heights }.removingDuplicates()
+        }
+        
+        // Filtrer les variantes pour la couleur sélectionnée et extraire les tailles
+        let sizesForColor = variants
+            .filter { variant in
+                variant.colors?.id == selectedColor.id && variant.stock > 0
+            }
+            .compactMap { $0.heights }
+            .removingDuplicates()
+        
+        return sizesForColor
     }
 
     var body: some View {
@@ -98,20 +117,21 @@ struct ProductDetailView: View {
                                                 )
                                                 .onTapGesture {
                                                     selectedColor = color
+                                                    // Réinitialiser la taille sélectionnée quand on change de couleur
+                                                    selectedSize = nil
                                                 }
                                         }
                                     }
                                 }
                             }
 
-                            // Size Selection
-                            let sizes = variants.compactMap { $0.heights }.removingDuplicates()
-                            if !sizes.isEmpty {
+                            // Size Selection - Maintenant filtrée par couleur
+                            if !availableSizesForSelectedColor.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Taille").font(.headline)
                                     ScrollView(.horizontal, showsIndicators: false) {
                                         HStack {
-                                            ForEach(sizes, id: \ .id) { size in
+                                            ForEach(availableSizesForSelectedColor, id: \.id) { size in
                                                 Text(size.nom)
                                                     .padding()
                                                     .background(selectedSize?.id == size.id ? Color.gray.opacity(0.2) : Color.clear)
@@ -123,6 +143,15 @@ struct ProductDetailView: View {
                                             }
                                         }
                                     }
+                                }
+                                .padding(.horizontal)
+                            } else if selectedColor != nil {
+                                // Afficher un message si aucune taille n'est disponible pour la couleur sélectionnée
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Taille").font(.headline)
+                                    Text("Aucune taille disponible pour cette couleur")
+                                        .foregroundColor(.red)
+                                        .font(.caption)
                                 }
                                 .padding(.horizontal)
                             }
@@ -160,6 +189,13 @@ struct ProductDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             productViewModel.fetchProduct(id: product.id)
+            
+            // Démarrer le suivi de la durée de consultation
+            recommendationViewModel.startViewTracking(productId: product.id)
+        }
+        .onDisappear {
+            // Arrêter le suivi de la durée de consultation
+            recommendationViewModel.stopViewTracking()
         }
         .onChange(of: variants) { newVariants in
             if selectedColor == nil {

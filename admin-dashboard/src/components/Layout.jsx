@@ -22,6 +22,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Inventory as InventoryIcon,
+  ShoppingCart as OrdersIcon,
   Logout as LogoutIcon,
   AccountCircle as AccountCircleIcon,
   DarkMode as DarkModeIcon,
@@ -65,6 +66,11 @@ const Layout = () => {
       text: 'Produits', 
       icon: <InventoryIcon />, 
       path: '/products',
+    },
+    { 
+      text: 'Commandes', 
+      icon: <OrdersIcon />, 
+      path: '/orders',
     },
   ];
 
