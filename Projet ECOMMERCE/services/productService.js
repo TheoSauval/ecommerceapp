@@ -250,6 +250,78 @@ class ProductService {
         if (ordersError) throw ordersError;
         return ordersData || [];
     }
+
+    // Récupérer toutes les catégories disponibles
+    async getAvailableCategories() {
+        // Récupérer les produits actifs avec leurs variantes qui ont du stock
+        const { data, error } = await supabase
+            .from('products')
+            .select(`
+                categorie,
+                product_variants!inner(
+                    stock,
+                    actif
+                )
+            `)
+            .eq('actif', true)
+            .not('categorie', 'is', null)
+            .not('categorie', 'eq', '')
+            .gt('product_variants.stock', 0)
+            .eq('product_variants.actif', true);
+
+        if (error) throw error;
+
+        // Extraire les catégories uniques et les trier
+        const categories = [...new Set(data.map(item => item.categorie))].sort();
+        
+        return categories;
+    }
+
+    // Récupérer les produits filtrés par catégorie avec pagination
+    async getProductsByCategory(category, page = 1, limit = 10) {
+        const offset = (page - 1) * limit;
+
+        // Récupérer le total des produits de cette catégorie
+        const { count, error: countError } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('actif', true)
+            .eq('categorie', category);
+
+        if (countError) throw countError;
+
+        // Récupérer les produits de cette catégorie avec leurs variantes
+        const { data: products, error } = await supabase
+            .from('products')
+            .select(`
+                *,
+                product_variants (
+                    *,
+                    colors (id, nom, code_hex),
+                    heights (id, nom, ordre)
+                )
+            `)
+            .eq('actif', true)
+            .eq('categorie', category)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+
+        // Renommer 'product_variants' en 'variants' pour la compatibilité avec le client Swift
+        const productsWithRenamedVariants = products.map(p => ({
+            ...p,
+            variants: p.product_variants || [],
+            product_variants: undefined // Nettoyage
+        }));
+
+        return {
+            products: productsWithRenamedVariants,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            category: category
+        };
+    }
 }
 
 module.exports = new ProductService(); 

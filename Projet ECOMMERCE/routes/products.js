@@ -12,6 +12,12 @@ router.get('/', productController.getAllProducts);
 // GET /api/products/search - Recherche full-text
 router.get('/search', productController.searchProducts);
 
+// GET /api/products/categories - Récupérer toutes les catégories disponibles
+router.get('/categories', productController.getAvailableCategories);
+
+// GET /api/products/category/:category - Produits filtrés par catégorie
+router.get('/category/:category', productController.getProductsByCategory);
+
 // GET /api/products/:id - Détails d'un produit
 router.get('/:id', productController.getProductById);
 

@@ -25,6 +25,26 @@ class ProductViewModel: ObservableObject {
         }
     }
     
+    func refreshProducts() {
+        // Force le rafraîchissement même si des produits sont déjà chargés
+        isLoading = true
+        errorMessage = nil
+        
+        productService.fetchAllProducts { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                switch result {
+                case .success(let products):
+                    self?.products = products
+                    print("✅ \(products.count) produits rafraîchis avec succès")
+                case .failure(let error):
+                    self?.errorMessage = "Erreur lors du rafraîchissement: \(error.localizedDescription)"
+                    print("❌ Erreur lors du rafraîchissement des produits: \(error)")
+                }
+            }
+        }
+    }
+    
     func fetchProduct(id: Int) {
         isLoading = true
         errorMessage = nil

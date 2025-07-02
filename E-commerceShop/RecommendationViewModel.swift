@@ -52,6 +52,27 @@ class RecommendationViewModel: ObservableObject {
         }
     }
     
+    func refreshRecommendations(limit: Int = 10) {
+        // Force le rafraîchissement même si des recommandations sont déjà chargées
+        isLoading = true
+        errorMessage = nil
+        
+        recommendationService.fetchRecommendations(limit: limit) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                
+                switch result {
+                case .success(let recommendations):
+                    self?.recommendations = recommendations
+                    print("✅ \(recommendations.count) recommandations rafraîchies avec succès")
+                case .failure(let error):
+                    self?.errorMessage = "Erreur lors du rafraîchissement des recommandations: \(error.localizedDescription)"
+                    print("❌ Erreur lors du rafraîchissement des recommandations: \(error)")
+                }
+            }
+        }
+    }
+    
     // MARK: - Charger l'historique utilisateur
     
     func fetchUserHistory() {

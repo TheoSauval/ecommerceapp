@@ -62,4 +62,28 @@ exports.deleteProduct = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
+
+// GET /api/products/categories
+exports.getAvailableCategories = async (req, res) => {
+    try {
+        const categories = await productService.getAvailableCategories();
+        res.json(categories);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// GET /api/products/category/:category
+exports.getProductsByCategory = async (req, res) => {
+    try {
+        const { category } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const result = await productService.getProductsByCategory(category, page, limit);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 }; 
