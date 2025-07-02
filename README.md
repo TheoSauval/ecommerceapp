@@ -417,19 +417,4 @@ npm start
 
 ---
 
-## 📞 Support
-
-Pour toute question ou problème :
-- **Documentation** : Voir les fichiers de configuration
-- **Issues** : Créer une issue sur le repository
-- **Contact** : [Votre email]
-
----
-
-## 📄 Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
-
----
-
-**Développé avec ❤️ par [Votre nom]** 
+**Développé avec ❤️ par Enzo et Théo** 
