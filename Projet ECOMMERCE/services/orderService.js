@@ -36,6 +36,67 @@ class OrderService {
         }));
     }
     
+    // Récupérer une commande par ID (version admin - sans filtre utilisateur)
+    async getOrderByIdAdmin(orderId) {
+        const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_variants (
+                    order_id,
+                    variant_id,
+                    quantity,
+                    unit_price,
+                    product_variants (
+                        *,
+                        products (*),
+                        colors (*),
+                        heights (*)
+                    )
+                )
+            `)
+            .eq('id', orderId)
+            .single();
+            
+        if (error) throw error;
+        
+        // Récupérer les informations utilisateur depuis user_profiles et auth.users
+        let userProfile = null;
+        let userEmail = null;
+        if (data.user_id) {
+            // Récupérer le profil utilisateur
+            const { data: profile, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('id, nom, prenom')
+                .eq('id', data.user_id)
+                .single();
+                
+            if (!profileError && profile) {
+                userProfile = profile;
+            }
+            
+            // Récupérer l'email depuis auth.users
+            const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(data.user_id);
+            if (!authError && authUser) {
+                userEmail = authUser.user.email;
+            }
+        }
+        
+        // Transformer les données pour correspondre au modèle Swift
+        return {
+            ...data,
+            user_profiles: userProfile ? {
+                ...userProfile,
+                email: userEmail
+            } : null,
+            order_variants: data.order_variants?.map(variant => ({
+                ...variant,
+                product_variant: variant.product_variants,
+                product_variants: undefined
+            }))
+        };
+    }
+    
     // Récupérer une commande par ID
     async getOrderById(orderId, userId) {
         const { data, error } = await supabase
@@ -291,6 +352,99 @@ class OrderService {
                 item.product_variant.products.vendeur_id === vendorId
             )
         );
+    }
+
+    // Récupérer les commandes par liste de produits (pour les vendeurs)
+    async getOrdersByProducts(productIds) {
+        if (!productIds || productIds.length === 0) {
+            return [];
+        }
+
+        // D'abord, récupérer toutes les commandes avec leurs variantes
+        const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_variants (
+                    order_id,
+                    variant_id,
+                    quantity,
+                    unit_price,
+                    product_variants (
+                        *,
+                        products (
+                            id,
+                            nom,
+                            prix_base,
+                            vendeur_id,
+                            images
+                        ),
+                        colors (*),
+                        heights (*)
+                    )
+                )
+            `)
+            .order('created_at', { ascending: false });
+            
+        if (ordersError) throw ordersError;
+
+        // Récupérer les profils utilisateurs séparément (en filtrant les user_id null)
+        const userIds = [...new Set(orders.map(order => order.user_id).filter(id => id !== null))];
+        
+        let userProfilesMap = {};
+        if (userIds.length > 0) {
+            const { data: userProfiles, error: profilesError } = await supabase
+                .from('user_profiles')
+                .select('id, nom, prenom')
+                .in('id', userIds);
+
+            if (profilesError) throw profilesError;
+
+            // Créer un map pour accéder rapidement aux profils
+            userProfiles.forEach(profile => {
+                userProfilesMap[profile.id] = profile;
+            });
+            
+            // Récupérer les emails depuis auth.users
+            for (const userId of userIds) {
+                try {
+                    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+                    if (!authError && authUser && userProfilesMap[userId]) {
+                        userProfilesMap[userId].email = authUser.user.email;
+                    }
+                } catch (error) {
+                    console.log('Erreur lors de la récupération de l\'email pour user_id:', userId);
+                }
+            }
+        }
+        
+        // Transformer et filtrer les données
+        const transformedData = orders.map(order => {
+            // Filtrer les items pour ne garder que ceux du vendeur
+            const vendorItems = order.order_variants?.filter(variant => 
+                productIds.includes(variant.product_variants.products.id)
+            ) || [];
+
+            // Transformer les items au format attendu par le frontend
+            const items = vendorItems.map(variant => ({
+                id: variant.variant_id,
+                nom_produit: variant.product_variants.products.nom,
+                prix: variant.unit_price || variant.product_variants.products.prix_base,
+                quantite: variant.quantity,
+                image_url: variant.product_variants.products.images?.[0] || null
+            }));
+
+            return {
+                id: order.id,
+                status: order.status,
+                date_commande: order.created_at,
+                user: order.user_id ? (userProfilesMap[order.user_id] || { nom: 'Utilisateur', prenom: 'Inconnu' }) : { nom: 'Utilisateur', prenom: 'Anonyme' },
+                items: items,
+                total: items.reduce((sum, item) => sum + (item.prix * item.quantite), 0)
+            };
+        }).filter(order => order.items.length > 0); // Ne garder que les commandes avec des produits du vendeur
+        
+        return transformedData;
     }
     
     // Nettoyer automatiquement les commandes orphelines (timeout)
